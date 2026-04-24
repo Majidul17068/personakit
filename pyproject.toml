@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "personakit"
-version = "0.1.4"
+version = "0.1.5"
 description = "A declarative framework for building role-based LLM agents — code reviewers, compliance officers, clinical triage, support triage. Not a personality classifier; an agent builder. Persona, frameworks, probes, red flags, and themes as data; you get a typed, cited, safety-aware agent."
 readme = "README.md"
 license = "MIT"
@@ -25,6 +25,7 @@ keywords = [
     "prompt-engineering",
     "openai",
     "anthropic",
+    "litellm",
     "claude",
     "gpt",
     "chatgpt",
@@ -67,8 +68,9 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=1.0"]
 anthropic = ["anthropic>=0.20"]
+litellm = ["litellm>=1.40"]
 yaml = ["pyyaml>=6.0"]
-all = ["personakit[openai,anthropic,yaml]"]
+all = ["personakit[openai,anthropic,litellm,yaml]"]
 dev = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
@@ -112,7 +114,7 @@ disallow_untyped_defs = true
 disallow_any_generics = true
 
 [[tool.mypy.overrides]]
-module = ["openai.*", "anthropic.*", "yaml.*"]
+module = ["openai.*", "anthropic.*", "litellm.*", "yaml.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

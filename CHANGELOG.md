@@ -7,6 +7,29 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-04-24
+
+### Added
+- **`LiteLLMProvider`** — a new provider adapter that wraps
+  [LiteLLM](https://github.com/BerriAI/litellm) and unlocks 100+ LLM
+  providers through a single extra: OpenAI, Anthropic, Azure OpenAI, AWS
+  Bedrock, Google Vertex AI, Cohere, Mistral, Hugging Face, Ollama,
+  DeepSeek, Together AI, Groq, Fireworks, Anyscale, and any
+  OpenAI-compatible endpoint. Install with `pip install 'personakit[litellm]'`.
+  Switching providers is a one-line change to the model string.
+- New optional extra `personakit[litellm]` requiring `litellm>=1.40`.
+- `litellm.*` added to the mypy `ignore_missing_imports` override so the
+  core still type-checks without the optional SDK installed.
+- 8 new tests in `tests/test_providers_litellm.py` using a mock client —
+  exercises basic round-trip, model override, response-schema forwarding,
+  api_key / api_base routing, extra defaults passthrough, tool-call
+  extraction, upstream-exception wrapping, and the missing-dependency error.
+- README gains a "100+ providers via LiteLLM" section with concrete
+  examples for Bedrock, Azure, Vertex AI, Ollama, and Groq.
+
+### Tests
+- 44/44 unit tests passing (up from 36).
+
 ## [0.1.4] — 2026-04-24
 
 ### Fixed

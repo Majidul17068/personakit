@@ -313,12 +313,44 @@ support = registry.get("support_triage")
 
 ## Providers
 
-| Extra                   | Install                   | Default model         |
-| ----------------------- | ------------------------- | --------------------- |
-| `personakit[openai]`    | `openai>=1.0`             | `gpt-4o-mini`         |
-| `personakit[anthropic]` | `anthropic>=0.20`         | `claude-sonnet-4-6`   |
-| `personakit[yaml]`      | `pyyaml>=6.0`             | —                     |
-| `personakit[all]`       | all of the above          | —                     |
+| Extra                   | Install                   | What you get                                 |
+| ----------------------- | ------------------------- | -------------------------------------------- |
+| `personakit[openai]`    | `openai>=1.0`             | Native OpenAI SDK — `gpt-4o-mini` default    |
+| `personakit[anthropic]` | `anthropic>=0.20`         | Native Anthropic SDK — `claude-sonnet-4-6`   |
+| `personakit[litellm]`   | `litellm>=1.40`           | **100+ providers via one extra** (see below) |
+| `personakit[yaml]`      | `pyyaml>=6.0`             | YAML specialist authoring                    |
+| `personakit[all]`       | all of the above          | Everything                                   |
+
+### 100+ providers via LiteLLM
+
+[LiteLLM](https://github.com/BerriAI/litellm) normalises the APIs of 100+
+providers — OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, Google Vertex AI,
+Cohere, Mistral, Hugging Face, Ollama, DeepSeek, Together AI, Groq,
+Fireworks, Anyscale, and any OpenAI-compatible endpoint — into a single
+unified call. `LiteLLMProvider` plugs that into personakit so switching
+providers is a one-line change:
+
+```python
+from personakit import Agent
+from personakit.providers import LiteLLMProvider
+from personakit.examples import FINTECH_TRANSACTION_REVIEWER
+
+# Same Specialist, any provider LiteLLM supports — change the model string only.
+provider = LiteLLMProvider(default_model="bedrock/anthropic.claude-v2")
+# or:  LiteLLMProvider(default_model="azure/my-gpt-4-deployment",
+#                       api_key=..., api_version="2024-06-01")
+# or:  LiteLLMProvider(default_model="vertex_ai/gemini-pro")
+# or:  LiteLLMProvider(default_model="ollama/llama3",
+#                       api_base="http://localhost:11434")
+# or:  LiteLLMProvider(default_model="groq/mixtral-8x7b-32768")
+
+agent = Agent(specialist=FINTECH_TRANSACTION_REVIEWER, provider=provider)
+result = await agent.analyze(transaction_details)
+```
+
+Install: `pip install 'personakit[litellm]'`. You can also use LiteLLM's
+**proxy mode** with `OpenAIProvider(base_url="http://localhost:4000")` if
+you prefer running LiteLLM as a separate gateway.
 
 `MockProvider` ships in the core for offline testing — no API key needed:
 
@@ -344,7 +376,7 @@ assert_triggered(result, "legal_or_chargeback_language_attorney_lawsuit_chargeba
 4. **Tools are opt-in.** Core has zero coupling to tool calling.
 5. **Minimal dependencies.** `pydantic` + `httpx`. Everything else is an extra.
 6. **Domain-neutral.** Engineering, support, fintech, legal, clinical, education, delivery, product — one library.
-7. **Provider-agnostic.** Same Specialist, any model.
+7. **Provider-agnostic.** Native OpenAI + Anthropic adapters, plus **100+ providers via the LiteLLM extra** (Azure, Bedrock, Vertex AI, Cohere, Mistral, Ollama, Groq, and any OpenAI-compatible endpoint). Same Specialist, any model.
 
 ## Works alongside the rest of the LLM toolchain
 

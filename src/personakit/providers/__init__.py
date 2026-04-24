@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .anthropic import AnthropicProvider
 from .base import LLMProvider, LLMResponse, Message
+from .litellm import LiteLLMProvider
 from .mock import MockProvider
 from .openai import OpenAIProvider
 
@@ -14,6 +15,7 @@ __all__ = [
     "AnthropicProvider",
     "LLMProvider",
     "LLMResponse",
+    "LiteLLMProvider",
     "Message",
     "MockProvider",
     "OpenAIProvider",
