@@ -14,10 +14,32 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import types
+import typing
 from collections.abc import Callable
 from typing import Any, Union, get_args, get_origin
 
 from .errors import ToolError
+
+# PEP 604 `X | Y` produces `types.UnionType`; typing.Union[X, Y] produces a
+# different origin. Treat both as unions for JSON-schema purposes.
+_UNION_TYPES: tuple[Any, ...] = (Union, types.UnionType)
+
+
+def _resolve_hints(func: Callable[..., Any]) -> dict[str, Any]:
+    """Return a name -> resolved-annotation map for `func`.
+
+    Callers often decorate tool functions in modules that use
+    `from __future__ import annotations`, which stringifies annotations at
+    module load. `inspect.Parameter.annotation` then yields the raw string
+    (e.g. "int") rather than the actual type object — so we evaluate via
+    `typing.get_type_hints`, which resolves those strings against the
+    function's globals/locals.
+    """
+    try:
+        return typing.get_type_hints(func, include_extras=True)
+    except (NameError, TypeError, AttributeError):
+        return {}
 
 
 class Tool:
@@ -117,12 +139,14 @@ def _build_schema(
     sig: inspect.Signature,
     description: str,
 ) -> dict[str, Any]:
+    hints = _resolve_hints(func)
     props: dict[str, Any] = {}
     required: list[str] = []
     for param_name, param in sig.parameters.items():
         if param_name in {"self", "cls"}:
             continue
-        json_type = _annotation_to_json(param.annotation)
+        annotation = hints.get(param_name, param.annotation)
+        json_type = _annotation_to_json(annotation)
         props[param_name] = json_type
         if param.default is inspect.Parameter.empty:
             required.append(param_name)
@@ -141,7 +165,7 @@ def _annotation_to_json(annotation: Any) -> dict[str, Any]:
     if annotation is inspect.Parameter.empty or annotation is Any:
         return {"type": "string"}
     origin = get_origin(annotation)
-    if origin is Union:
+    if origin in _UNION_TYPES:
         args = [a for a in get_args(annotation) if a is not type(None)]
         if len(args) == 1:
             inner = _annotation_to_json(args[0])

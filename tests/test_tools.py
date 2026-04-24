@@ -59,3 +59,37 @@ def test_toolbox():
     box = ToolBox(one, two)
     assert box.get("one") is one
     assert len(box.as_list()) == 2
+
+
+# ---- Regression: with `from __future__ import annotations` at the top of this
+# module, parameter annotations are strings until resolved. Prior to v0.1.1 the
+# int/float/bool/list hints all fell through to {"type": "string"}.
+def test_int_float_bool_annotations_resolve():
+    @tool
+    def compute(
+        amount: int,
+        rate: float,
+        flag: bool,
+        tags: list[str],
+        note: str,
+    ) -> dict:
+        """Regression fixture for stringified annotations."""
+        return {}
+
+    props = compute.to_openai_schema()["function"]["parameters"]["properties"]
+    assert props["amount"]["type"] == "integer"
+    assert props["rate"]["type"] == "number"
+    assert props["flag"]["type"] == "boolean"
+    assert props["tags"]["type"] == "array"
+    assert props["tags"]["items"]["type"] == "string"
+    assert props["note"]["type"] == "string"
+
+
+def test_optional_annotation_marks_nullable():
+    @tool
+    def maybe(name: str | None = None) -> str:
+        return name or ""
+
+    props = maybe.to_openai_schema()["function"]["parameters"]["properties"]
+    assert props["name"]["type"] == "string"
+    assert props["name"].get("nullable") is True
