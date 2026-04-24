@@ -1,10 +1,13 @@
 # personakit
 
-**The declarative agent builder.** Encode any specialist's expertise — persona,
-frameworks, probes, red flags, recommendation themes — as data. Get a
-production-grade LLM agent with structured output, citations, and safety
-triggers. Works for **any domain**: engineering, fintech, customer support,
-product, legal, clinical, education — one library, one pattern.
+**Build any specialist LLM agent declaratively.** Describe a role — persona,
+frameworks, probes, red flags, recommendation themes — as a single data
+object, and get a typed, cited, safety-aware agent. No chain wiring, no graph
+building, no orchestration code.
+
+Works with any LLM provider. Domain-agnostic: engineering, fintech, customer
+support, product, legal, clinical, education, delivery — one library, one
+pattern.
 
 > Created by **[Majidul Islam](https://github.com/Majidul17068)**.
 
@@ -14,16 +17,20 @@ pip install personakit
 
 ---
 
-## Why personakit
+## The idea
 
-**LangChain** is for wiring LLM calls. **CrewAI** is for orchestrating agent teams.
-**LangGraph** is for branching control flow. They're all *engineer-facing composition frameworks*.
+A specialist agent is rarely about *retrieval* — it's about **role, tone,
+knowledge frameworks, diagnostic questions, safety triggers, and output
+shape**. All of that can be captured declaratively:
 
-**personakit is for encoding specialist expertise — declaratively.** A code
-reviewer, a fintech compliance officer, a customer-support triage agent, a
-scrum master — each is a single `Specialist(...)` object. No chain wiring. No
-graph building. Domain experts can author specialists in YAML and hand them to
-engineers.
+- A **code reviewer** has frameworks (OWASP, SOLID), probes (does it have tests? what's the blast radius?), and red flags (hard-coded secrets, SQL injection).
+- A **fintech compliance officer** has frameworks (AML/BSA, OFAC, FATF typologies), probes (amount, country pair, velocity), and red flags (sanctioned counterparty, structuring).
+- A **customer support triage agent** has frameworks (refund policy, escalation matrix), probes (order ID, sentiment), and red flags (chargeback language, data request).
+- A **scrum master** has frameworks (Scrum Guide, DORA), probes (days remaining, WIP count), and red flags (scope creep, external blocker without owner).
+
+personakit turns that shape into a library. One `Specialist` object = one
+declarative agent. Ship it via Python, or hand a YAML file to a domain expert
+and let them author without touching any chain code.
 
 The distinctive primitives:
 
@@ -250,6 +257,26 @@ assert_triggered(result, "legal_or_chargeback_language_attorney_lawsuit_chargeba
 5. **Minimal dependencies.** `pydantic` + `httpx`. Everything else is an extra.
 6. **Domain-neutral.** Engineering, support, fintech, legal, clinical, education, delivery, product — one library.
 7. **Provider-agnostic.** Same Specialist, any model.
+
+## Works alongside the rest of the LLM toolchain
+
+personakit focuses on **declarative specialist definition**. It intentionally
+does not try to be:
+
+- a chain-composition library — use **LangChain** when you need to wire up
+  complex multi-step LLM pipelines
+- a multi-agent orchestration framework — use **CrewAI** when you need a
+  team of agents collaborating on a shared goal
+- a branching control-flow engine — use **LangGraph** when you need
+  conditional routing and loops across nodes
+
+They compose nicely. A LangChain chain can invoke a personakit `Agent` as one
+of its steps. A CrewAI crew member can be a personakit `Specialist`. A
+LangGraph node can call `agent.analyze()` and route on `result.has_urgent`.
+
+Use personakit for what it's best at — the *declarative specialist layer* —
+and reach for the others when the problem actually needs chains, crews, or
+graphs.
 
 ## Status
 

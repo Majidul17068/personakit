@@ -7,6 +7,19 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-04-24
+
+### Changed
+- README rewritten with a value-forward opening. The package is now introduced
+  by what it does, not in comparison to LangChain / CrewAI / LangGraph. A
+  "Works alongside" section at the bottom positions those libraries as
+  complementary tools rather than competitors.
+- PyPI short description reworked into platform framing — emphasises "build
+  any specialist agent" rather than listing specific verticals. No more
+  implicit domain bias.
+
+No code changes. Metadata-only patch release.
+
 ## [0.1.1] — 2026-04-24
 
 ### Added

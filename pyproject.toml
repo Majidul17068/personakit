@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "personakit"
-version = "0.1.1"
-description = "The declarative agent builder for LLMs — build any specialist (engineering, fintech, support, product, legal, clinical) from persona, frameworks, probes, red flags, and citations."
+version = "0.1.2"
+description = "Build any specialist LLM agent declaratively. Persona, frameworks, probes, red flags, and themes as data — you get a typed, cited, safety-aware agent. Domain-agnostic, provider-agnostic."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -28,8 +28,11 @@ keywords = [
     "claude",
     "gpt",
     "chatgpt",
-    "langchain-alternative",
-    "crewai-alternative",
+    "declarative",
+    "yaml",
+    "structured-output",
+    "safety",
+    "guardrails",
     "customer-support",
     "fintech",
     "aml",
