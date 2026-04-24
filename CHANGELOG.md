@@ -7,6 +7,25 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-04-24
+
+### Changed
+- **PyPI description** rewritten to disambiguate from personality classifiers
+  (MBTI, Big Five). The new line leads with "A declarative framework for
+  building role-based LLM agents — code reviewers, compliance officers,
+  clinical triage, support triage. Not a personality classifier; an agent
+  builder." External reviewers had been confusing personakit with
+  `pypersonality` / `persai`-class libraries.
+- **README opening** restructured for scannability: badges row, a
+  "What personakit IS / what it is NOT" block, a 30-second quickstart
+  above the fold, an ASCII architecture flow diagram, a 7-row bundled
+  specialists table, and a FAQ section covering the top three external
+  questions (is this a personality classifier? / RAG? / vs LangChain?).
+- Removed duplicated Quickstart and Bundled Specialists sections lower in
+  the README; top-of-page versions are authoritative.
+
+No code changes. README / metadata patch only.
+
 ## [0.1.2] — 2026-04-24
 
 ### Changed

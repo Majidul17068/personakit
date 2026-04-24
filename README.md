@@ -1,19 +1,161 @@
 # personakit
 
-**Build any specialist LLM agent declaratively.** Describe a role — persona,
-frameworks, probes, red flags, recommendation themes — as a single data
-object, and get a typed, cited, safety-aware agent. No chain wiring, no graph
-building, no orchestration code.
+[![PyPI](https://img.shields.io/pypi/v/personakit.svg)](https://pypi.org/project/personakit/)
+[![Python](https://img.shields.io/pypi/pyversions/personakit.svg)](https://pypi.org/project/personakit/)
+[![License](https://img.shields.io/pypi/l/personakit.svg)](https://github.com/Majidul17068/personakit/blob/main/LICENSE)
+[![Tests](https://img.shields.io/badge/tests-36%20passing-brightgreen.svg)](https://github.com/Majidul17068/personakit/tree/main/tests)
+[![Type Checked](https://img.shields.io/badge/mypy-strict-blue.svg)](https://github.com/Majidul17068/personakit/blob/main/pyproject.toml)
 
-Works with any LLM provider. Domain-agnostic: engineering, fintech, customer
-support, product, legal, clinical, education, delivery — one library, one
-pattern.
+**A declarative framework for building role-based LLM agents.** Describe a
+specialist — persona, frameworks, probes, red flags, recommendation themes — as
+a single data object, and get a typed, cited, safety-aware agent. No chain
+wiring, no graph building, no orchestration code.
 
 > Created by **[Majidul Islam](https://github.com/Majidul17068)**.
 
 ```bash
 pip install personakit
 ```
+
+---
+
+## What personakit is — and what it is not
+
+**personakit IS** a declarative framework for building *role-based LLM agents*:
+code reviewers, compliance officers, clinical triage, support triage, contract
+reviewers, scrum masters, and similar domain specialists. You describe the role
+as data; personakit produces the runnable agent backed by OpenAI / Anthropic /
+your local model.
+
+**personakit is NOT:**
+
+- ❌ **Not a personality classifier** (not MBTI, not Big Five, not trait
+  inference). It has nothing to do with `pypersonality`, `persai`, or similar
+  trained classifiers.
+- ❌ **Not an ML training library.** No feature extraction, no fitted models,
+  no datasets. It wraps LLMs you already have access to.
+- ❌ **Not a RAG framework.** Bring your own vector store via the optional
+  `@tool` system — we don't ship embeddings or retrieval.
+- ❌ **Not a chain-orchestration engine.** Composable *alongside* LangChain,
+  LangGraph, and CrewAI — personakit owns the specialist layer, they own the
+  pipeline layer.
+
+---
+
+## 30-second quickstart
+
+```python
+import asyncio
+from personakit import Agent, Specialist, Framework, Probe, RedFlag, Severity, Theme
+
+code_reviewer = Specialist(
+    name="code_reviewer",
+    persona="Senior staff engineer. Correctness, security, perf — in that order.",
+    frameworks=[Framework(name="OWASP Top 10"), Framework(name="SOLID")],
+    probes=[Probe(question="Does the change include tests?", value_type="boolean")],
+    red_flags=[
+        RedFlag(
+            trigger="Hard-coded secret",
+            severity=Severity.CRITICAL,
+            action="BLOCK merge. Rotate the secret immediately.",
+            patterns=[r"sk-[A-Za-z0-9]{20,}", r"AKIA[0-9A-Z]{16}"],
+        ),
+    ],
+    themes=[Theme(name="Correctness"), Theme(name="Security"), Theme(name="Performance")],
+)
+
+agent = Agent(specialist=code_reviewer, model="gpt-4o-mini")
+result = asyncio.run(agent.analyze("--- a.py\n+api_key = 'sk-proj-abc123456789012345678'"))
+
+print(result.pretty())              # full structured summary
+print(result.red_flags_triggered)   # [TriggeredRedFlag(..., severity=CRITICAL, evidence='sk-proj-...')]
+print(result.has_urgent)            # True
+```
+
+That's the whole agent. No chain wiring. One `Specialist` dataclass. Typed,
+cited, safety-aware output.
+
+---
+
+## How it works
+
+```
+┌──────────────────┐    ┌─────────────────────┐    ┌──────────────────────┐
+│ Specialist       │ →  │ personakit          │ →  │ Agent.analyze(text)  │
+│ (role as data:   │    │ PromptBuilder +     │    │                      │
+│  persona,        │    │ auto-derived JSON   │    │ Structured result:   │
+│  frameworks,     │    │ schema +            │    │  • summary           │
+│  probes,         │    │ red-flag matcher    │    │  • probes_answered   │
+│  red flags,      │    │ (regex + semantic)  │    │  • red_flags_triggered│
+│  themes)         │    │                     │    │  • recommendations   │
+└──────────────────┘    └─────────────────────┘    │  • citations_used    │
+         ▲                        │                 └──────────────────────┘
+         │                        ▼
+         │              ┌─────────────────────┐
+         │              │ LLM provider        │
+         │              │ (OpenAI / Anthropic │
+         │              │  / local / mock)    │
+         │              └─────────────────────┘
+         │
+   Authorable in Python OR YAML — hand the YAML to a domain expert.
+```
+
+---
+
+## Bundled specialists — 7 domains, zero boilerplate
+
+Import any of these directly, or read the source as a template:
+
+| Specialist                       | Domain                          | What it does                                                 |
+| -------------------------------- | ------------------------------- | ------------------------------------------------------------ |
+| `CODE_REVIEWER`                  | `engineering.software.review`   | PR reviewer — OWASP, SOLID, 12-Factor, secret detection      |
+| `FINTECH_TRANSACTION_REVIEWER`   | `finance.fintech.aml`           | AML/fraud triage — OFAC, FATF typologies, SAR filing         |
+| `CUSTOMER_SUPPORT_TRIAGE`        | `support.saas.b2c`              | SaaS B2C support — refund policy, chargeback, GDPR routing   |
+| `SCRUM_MASTER`                   | `engineering.delivery.agile`    | Sprint health — scope creep, WIP limits, blockers            |
+| `CONTRACT_REVIEWER`              | `legal.contracts.m_and_a`       | M&A redlining — English common law, UCC, GDPR Art. 28        |
+| `FALLS_PREVENTION_NURSE`         | `healthcare.clinical.falls`     | Post-fall clinical triage — NICE NG161, CG176, Morse         |
+| `MATH_TUTOR`                     | `education.secondary`           | Socratic GCSE tutor — minimal persona-only specialist        |
+
+```python
+from personakit import Agent
+from personakit.examples import FINTECH_TRANSACTION_REVIEWER
+
+agent = Agent(specialist=FINTECH_TRANSACTION_REVIEWER, model="gpt-4o-mini")
+result = asyncio.run(agent.analyze(transaction_details))
+```
+
+---
+
+## FAQ
+
+**Q: Is this a personality classifier (MBTI, Big Five, etc.)?**
+No. personakit is an *agent builder*. It has no trained models, no feature
+extraction, and no personality taxonomy. If you need MBTI or Big Five, look at
+`pypersonality` or `persai` — completely different category of library.
+
+**Q: Can it fetch external knowledge (RAG, vector store, real-time APIs)?**
+Yes — via the opt-in `@tool` system. personakit is *bring-your-own-retrieval*:
+wrap your vector store (Pinecone, pgvector, Chroma, Qdrant, Weaviate) or any
+API in a `@tool` function, and the agent uses it. We don't ship a vector store
+because every team already has one they prefer.
+
+**Q: Why not just use LangChain or LangGraph?**
+Different problems. LangChain/LangGraph describe **what the agent does**
+(imperative chains, graphs). personakit describes **who the agent is**
+(declarative role). For role-based agents — compliance, code review, support
+triage, clinical — the declarative approach is ~10× less code and lets
+non-engineers author specialists in YAML. Use personakit *inside* a LangChain
+chain or LangGraph node when you need the chain / graph for orchestration.
+
+**Q: What does it depend on?**
+Just two runtime dependencies: **`pydantic`** and **`httpx`**. Providers
+(`openai`, `anthropic`, `pyyaml`) ship as optional extras — install only what
+you need. Total transitive footprint on a fresh venv: ~12 packages.
+
+**Q: Is it production-ready?**
+It's v0.1.3 — **alpha**. API may evolve before v1.0. 36 tests pass; `mypy
+--strict` clean; no unreleased breaking changes. Used in the wild but you
+should pin the minor version in production.
 
 ---
 
@@ -47,60 +189,6 @@ The distinctive primitives:
 Core has just two runtime deps: **`pydantic`** and **`httpx`**.
 
 ---
-
-## Quickstart — any domain in 20 lines
-
-```python
-import asyncio
-from personakit import Agent, Specialist, Framework, Probe, RedFlag, Severity, Theme
-
-product_manager = Specialist(
-    name="product_manager",
-    display_name="Senior Product Manager",
-    persona="You are a senior B2B SaaS PM. You sharpen feature specs and find edge cases.",
-    frameworks=[Framework(name="Jobs-to-be-Done"), Framework(name="RICE scoring")],
-    probes=[
-        Probe(question="What is the user's job-to-be-done?"),
-        Probe(question="What is the current workaround cost?", value_type="string"),
-        Probe(question="Is there a measurable success metric proposed?",
-              value_type="boolean", weight="high"),
-    ],
-    red_flags=[
-        RedFlag(
-            trigger="No success metric defined",
-            severity=Severity.HIGH,
-            action="Block PRD review. Require a quantitative success metric before scoping.",
-        ),
-    ],
-    themes=[Theme(name="Refinements"), Theme(name="Edge cases"), Theme(name="Open questions")],
-)
-
-agent = Agent(specialist=product_manager, model="gpt-4o-mini")
-
-async def main():
-    result = await agent.analyze(
-        "PRD: Add a 'dark mode' toggle to settings. Shipping next quarter."
-    )
-    print(result.pretty())
-
-asyncio.run(main())
-```
-
-## Bundled specialists across domains
-
-```python
-from personakit.examples import (
-    CODE_REVIEWER,                  # engineering — PRs, OWASP, SOLID
-    CONTRACT_REVIEWER,              # legal — M&A redlines, GDPR
-    CUSTOMER_SUPPORT_TRIAGE,        # support — SaaS B2C, refund policy, escalation
-    FALLS_PREVENTION_NURSE,         # clinical — NICE guidelines, post-fall protocol
-    FINTECH_TRANSACTION_REVIEWER,   # finance — AML/fraud, OFAC, FATF typologies
-    MATH_TUTOR,                     # education — Socratic, minimal shape
-    SCRUM_MASTER,                   # delivery — sprint health, blockers, WIP limits
-)
-```
-
-Each one is a template. Copy, edit, ship your own.
 
 ## Real agent types you can build in one file
 

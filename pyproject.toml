@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "personakit"
-version = "0.1.2"
-description = "Build any specialist LLM agent declaratively. Persona, frameworks, probes, red flags, and themes as data — you get a typed, cited, safety-aware agent. Domain-agnostic, provider-agnostic."
+version = "0.1.3"
+description = "A declarative framework for building role-based LLM agents — code reviewers, compliance officers, clinical triage, support triage. Not a personality classifier; an agent builder. Persona, frameworks, probes, red flags, and themes as data; you get a typed, cited, safety-aware agent."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
