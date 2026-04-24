@@ -46,7 +46,7 @@ class LLMProvider(Protocol):
         self,
         messages: list[Message],
         *,
-        model: str,
+        model: str | None = None,
         response_schema: dict[str, Any] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,

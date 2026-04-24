@@ -7,6 +7,35 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-04-24
+
+### Fixed
+- **`mypy --strict` now passes with zero errors** (was 12 errors in 7 files).
+  No runtime behaviour changes — purely type-hint cleanups:
+  - `specialist.py` — `_check_unique_keys` now filters `None` before `sorted()`
+    so the error-message construction is well-typed. The set of duplicates was
+    already guaranteed to be non-`None` via `_fill_key` / `_fill_id` validators,
+    but mypy couldn't see that — explicit filter makes it provable.
+  - `prompt_builder.py` — `probe_props[p.key]` now uses `cast(str, p.key)`
+    since the Probe validator guarantees the key is non-null at runtime.
+  - `providers/base.py` — `LLMProvider.complete` Protocol signature widened to
+    `model: str | None = None`. This matches every concrete implementation
+    (`OpenAIProvider`, `AnthropicProvider`, `MockProvider`) — they already
+    handle `None` by falling back to their configured `default_model`. The
+    Protocol was just stricter than reality.
+  - `agent.py` — `_parse_json` now uses `cast(dict[str, Any], json.loads(...))`
+    at the two return sites, since `json.loads` returns `Any`.
+  - `tools.py` — `_annotation_to_json` wraps `get_args(annotation)` in
+    `list(...)` for the list branch, matching the `list[Any]` type previously
+    inferred by the union branch.
+  - `loaders.py`, `providers/openai.py`, `providers/anthropic.py` — removed
+    three redundant `# type: ignore` comments. The same modules are already
+    covered by `[[tool.mypy.overrides]] ignore_missing_imports = true` in
+    `pyproject.toml`.
+
+### Tests
+- 36/36 unit tests passing (unchanged — no behaviour delta).
+
 ## [0.1.3] — 2026-04-24
 
 ### Changed

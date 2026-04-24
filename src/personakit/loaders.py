@@ -32,7 +32,7 @@ def specialist_from_json(path: str | Path) -> Specialist:
 
 def specialist_from_yaml(path: str | Path) -> Specialist:
     try:
-        import yaml  # type: ignore[import-untyped]
+        import yaml
     except ImportError as exc:
         raise MissingDependencyError(
             "YAML loading requires the 'pyyaml' package. "

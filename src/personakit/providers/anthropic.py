@@ -28,7 +28,7 @@ class AnthropicProvider:
             self._client = client
             return
         try:
-            from anthropic import AsyncAnthropic  # type: ignore[import-not-found]
+            from anthropic import AsyncAnthropic
         except ImportError as exc:
             raise MissingDependencyError(
                 "AnthropicProvider requires the 'anthropic' package. "

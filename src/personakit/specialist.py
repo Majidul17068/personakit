@@ -286,18 +286,28 @@ class Specialist(BaseModel):
 
     @model_validator(mode="after")
     def _check_unique_keys(self) -> Specialist:
+        # Probe.key / RedFlag.id are typed as `str | None` because the validator
+        # fills them from the question/trigger when omitted — by the time we
+        # reach this method they're always strings, but mypy can't see that.
+        # Filter None before sorting so the error message is well-typed.
         probe_keys = [p.key for p in self.probes]
         if len(probe_keys) != len(set(probe_keys)):
             dupes = {k for k in probe_keys if probe_keys.count(k) > 1}
-            raise SpecialistValidationError(f"Duplicate probe keys: {sorted(dupes)}")
+            raise SpecialistValidationError(
+                f"Duplicate probe keys: {sorted(d for d in dupes if d is not None)}"
+            )
         flag_ids = [f.id for f in self.red_flags]
         if len(flag_ids) != len(set(flag_ids)):
             dupes = {fid for fid in flag_ids if flag_ids.count(fid) > 1}
-            raise SpecialistValidationError(f"Duplicate red flag ids: {sorted(dupes)}")
+            raise SpecialistValidationError(
+                f"Duplicate red flag ids: {sorted(d for d in dupes if d is not None)}"
+            )
         theme_names = [t.name for t in self.themes]
         if len(theme_names) != len(set(theme_names)):
             dupes = {n for n in theme_names if theme_names.count(n) > 1}
-            raise SpecialistValidationError(f"Duplicate theme names: {sorted(dupes)}")
+            raise SpecialistValidationError(
+                f"Duplicate theme names: {sorted(d for d in dupes if d is not None)}"
+            )
         return self
 
     @property

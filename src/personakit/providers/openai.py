@@ -30,7 +30,7 @@ class OpenAIProvider:
             self._client = client
             return
         try:
-            from openai import AsyncOpenAI  # type: ignore[import-not-found]
+            from openai import AsyncOpenAI
         except ImportError as exc:
             raise MissingDependencyError(
                 "OpenAIProvider requires the 'openai' package. "

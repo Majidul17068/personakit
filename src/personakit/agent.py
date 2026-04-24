@@ -17,7 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 from .errors import CitationMissingError, OutputParseError
 from .matching import merge_post, pre_match
@@ -190,13 +190,13 @@ def _parse_json(text: str) -> dict[str, Any]:
     if match:
         candidate = match.group(1)
     try:
-        return json.loads(candidate)
+        return cast(dict[str, Any], json.loads(candidate))
     except json.JSONDecodeError as original:
         start = candidate.find("{")
         end = candidate.rfind("}")
         if start != -1 and end > start:
             try:
-                return json.loads(candidate[start : end + 1])
+                return cast(dict[str, Any], json.loads(candidate[start : end + 1]))
             except json.JSONDecodeError as exc:
                 raise OutputParseError(
                     f"Could not parse JSON from LLM output: {exc}"

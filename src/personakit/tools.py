@@ -173,7 +173,7 @@ def _annotation_to_json(annotation: Any) -> dict[str, Any]:
             return inner
         return {"type": "string"}
     if origin is list or annotation is list:
-        args = get_args(annotation)
+        args = list(get_args(annotation))
         item = _annotation_to_json(args[0]) if args else {"type": "string"}
         return {"type": "array", "items": item}
     if origin is dict or annotation is dict:

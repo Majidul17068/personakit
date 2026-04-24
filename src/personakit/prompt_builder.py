@@ -11,7 +11,7 @@ Two outputs:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from .specialist import Specialist, Theme
 
@@ -163,7 +163,9 @@ class PromptBuilder:
         themes = _filter_themes(specialist.themes, selected_themes)
         probe_props: dict[str, Any] = {}
         for p in specialist.probes:
-            probe_props[p.key] = _probe_json_schema(p)
+            # `p.key` is `str | None` in the schema; the Probe validator fills
+            # it from the question when omitted, so it is always a str at runtime.
+            probe_props[cast(str, p.key)] = _probe_json_schema(p)
 
         red_flag_ids = [rf.id for rf in specialist.red_flags]
         theme_names = [t.name for t in themes]
