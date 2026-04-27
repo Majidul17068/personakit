@@ -7,6 +7,41 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-04-27
+
+### Added
+- **Logo.** A new `assets/logo.png` ships with the repository (the layered
+  hexagon mark in navy + teal + coral). It's referenced from the README via
+  a raw GitHub URL so it renders correctly on the PyPI project page.
+- **Centered hero block** at the top of the README — logo, tagline, badges,
+  and a quick-link nav row (Why · Quickstart · Specialists · Providers ·
+  FAQ · GitHub).
+- **`Contributing` section** with concrete dev-setup commands, quality
+  gates (pytest, mypy --strict, ruff, build), and a list of high-leverage
+  contribution areas (new bundled specialists, bug reports, docs).
+- **`Privacy` section** — explicit statement that personakit collects no
+  telemetry and makes no network calls outside the LLM provider you
+  configure. Trust signal for compliance-sensitive adopters.
+- **Downloads badge** added to the badges row.
+- FAQ expanded from 5 to 9 entries — added "Does it work with LiteLLM?",
+  "Do I need to be a Python expert?", "Is there commercial support?", and
+  "Can I contribute?". Stale numbers updated (44 tests, 25 source files).
+
+### Changed
+- **README narrative reordered.** "Why personakit?" promoted from buried
+  position #8 to position #3, immediately after the IS / IS-NOT block —
+  readers now see the value proposition before the quickstart, matching
+  professional reader-journey flow (skim → evaluate → adopt → contribute).
+  FAQ moved from position #5 to position #15 (it's reference, not pitch).
+
+### Polished
+- Visual hierarchy throughout — proper section spacing, aligned tables,
+  consistent code-block language tags. The README now reads as a product
+  page rather than a developer's notes.
+
+No code changes. README / metadata patch only. 44 tests still pass; mypy
+--strict clean.
+
 ## [0.1.6] — 2026-04-24
 
 ### Changed

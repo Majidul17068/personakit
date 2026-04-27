@@ -1,21 +1,41 @@
-# personakit
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Majidul17068/personakit/main/assets/logo.png" alt="PersonaKit" width="420" />
+</p>
 
-[![PyPI](https://img.shields.io/pypi/v/personakit.svg)](https://pypi.org/project/personakit/)
-[![Python](https://img.shields.io/pypi/pyversions/personakit.svg)](https://pypi.org/project/personakit/)
-[![License](https://img.shields.io/pypi/l/personakit.svg)](https://github.com/Majidul17068/personakit/blob/main/LICENSE)
-[![Tests](https://img.shields.io/badge/tests-36%20passing-brightgreen.svg)](https://github.com/Majidul17068/personakit/tree/main/tests)
-[![Type Checked](https://img.shields.io/badge/mypy-strict-blue.svg)](https://github.com/Majidul17068/personakit/blob/main/pyproject.toml)
+<p align="center">
+  <strong>A declarative framework for building role-based LLM agents.</strong><br />
+  Describe a specialist as data — persona, frameworks, probes, red flags, themes —<br />
+  and get a typed, cited, safety-aware agent. No chain wiring. No graph building.
+</p>
 
-**A declarative framework for building role-based LLM agents.** Describe a
-specialist — persona, frameworks, probes, red flags, recommendation themes — as
-a single data object, and get a typed, cited, safety-aware agent. No chain
-wiring, no graph building, no orchestration code.
+<p align="center">
+  <a href="https://pypi.org/project/personakit/"><img src="https://img.shields.io/pypi/v/personakit.svg" alt="PyPI version" /></a>
+  <a href="https://pypi.org/project/personakit/"><img src="https://img.shields.io/pypi/pyversions/personakit.svg" alt="Python versions" /></a>
+  <a href="https://pypi.org/project/personakit/"><img src="https://img.shields.io/pypi/dm/personakit.svg" alt="Downloads" /></a>
+  <a href="https://github.com/Majidul17068/personakit/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/personakit.svg" alt="License" /></a>
+  <a href="https://github.com/Majidul17068/personakit/tree/main/tests"><img src="https://img.shields.io/badge/tests-44%20passing-brightgreen.svg" alt="Tests" /></a>
+  <a href="https://github.com/Majidul17068/personakit/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/mypy-strict-blue.svg" alt="mypy strict" /></a>
+</p>
 
-> Created by **[Majidul Islam](https://github.com/Majidul17068)**.
+<p align="center">
+  <a href="#why-personakit">Why</a>
+  ·
+  <a href="#30-second-quickstart">Quickstart</a>
+  ·
+  <a href="#bundled-specialists--7-domains-zero-boilerplate">Specialists</a>
+  ·
+  <a href="#providers">Providers</a>
+  ·
+  <a href="#faq">FAQ</a>
+  ·
+  <a href="https://github.com/Majidul17068/personakit">GitHub</a>
+</p>
 
 ```bash
 pip install personakit
 ```
+
+> Created by **[Majidul Islam](https://github.com/Majidul17068)** · MIT licensed · Independent open source
 
 ---
 
@@ -39,6 +59,52 @@ your local model.
 - ❌ **Not a chain-orchestration engine.** Composable *alongside* LangChain,
   LangGraph, and CrewAI — personakit owns the specialist layer, they own the
   pipeline layer.
+
+---
+
+## Why personakit?
+
+Building a specialist LLM agent shouldn't take 200 lines of chain wiring.
+
+Every specialist — regardless of domain — has the same anatomy:
+
+- A **role** the agent plays
+- **Knowledge bodies** it draws from and cites
+- **Diagnostic questions** it asks of any input
+- **Safety triggers** demanding immediate action
+- **Output categories** organizing what it recommends
+
+That anatomy holds whether your specialist reviews legal documents,
+evaluates clinical cases, audits financial transactions, scores research
+papers, drafts user stories, scopes engineering work, supports customers,
+moderates content, qualifies sales leads, grades coursework, or any of a
+thousand other roles. **personakit captures the anatomy.** You bring the
+role.
+
+You describe WHO the specialist is, as data. The library produces a typed,
+cited, safety-aware agent that runs on any LLM provider — without chain
+wiring, graph building, or orchestration code.
+
+**The discipline is the role description.** Everything else — JSON schema
+generation, red-flag matching (deterministic + semantic), citation
+enforcement, provider routing, structured-output validation — is automatic.
+
+If a domain expert can articulate what they look for, what they ask, and
+what they recommend, you can build them an agent in 30 lines.
+
+### The primitives
+
+| Concept             | What it gives you                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| **Specialist**      | Frozen dataclass — the entire agent definition, authorable in YAML                 |
+| **Framework**       | Body of knowledge with a citation key, cited in output                             |
+| **Probe**           | Diagnostic question; becomes a typed field in the structured response              |
+| **RedFlag**         | Trigger → severity → action → citation, matched deterministically AND semantically |
+| **Theme**           | User-selectable recommendation category                                            |
+| **Priority**        | Always-on checks reported as met / unmet / unknown                                 |
+| **Tool (optional)** | `@tool` decorator — opt-in for external memory, DB, APIs                           |
+
+Core has just two runtime deps: **`pydantic`** and **`httpx`**.
 
 ---
 
@@ -98,85 +164,6 @@ from personakit.examples import FINTECH_TRANSACTION_REVIEWER
 agent = Agent(specialist=FINTECH_TRANSACTION_REVIEWER, model="gpt-4o-mini")
 result = asyncio.run(agent.analyze(transaction_details))
 ```
-
----
-
-## FAQ
-
-**Q: Is this a personality classifier (MBTI, Big Five, etc.)?**
-No. personakit is an *agent builder*. It has no trained models, no feature
-extraction, and no personality taxonomy. If you need MBTI or Big Five, look at
-`pypersonality` or `persai` — completely different category of library.
-
-**Q: Can it fetch external knowledge (RAG, vector store, real-time APIs)?**
-Yes — via the opt-in `@tool` system. personakit is *bring-your-own-retrieval*:
-wrap your vector store (Pinecone, pgvector, Chroma, Qdrant, Weaviate) or any
-API in a `@tool` function, and the agent uses it. We don't ship a vector store
-because every team already has one they prefer.
-
-**Q: Why not just use LangChain or LangGraph?**
-Different problems. LangChain/LangGraph describe **what the agent does**
-(imperative chains, graphs). personakit describes **who the agent is**
-(declarative role). For role-based agents — compliance, code review, support
-triage, clinical — the declarative approach is ~10× less code and lets
-non-engineers author specialists in YAML. Use personakit *inside* a LangChain
-chain or LangGraph node when you need the chain / graph for orchestration.
-
-**Q: What does it depend on?**
-Just two runtime dependencies: **`pydantic`** and **`httpx`**. Providers
-(`openai`, `anthropic`, `pyyaml`) ship as optional extras — install only what
-you need. Total transitive footprint on a fresh venv: ~12 packages.
-
-**Q: Is it production-ready?**
-It's v0.1.3 — **alpha**. API may evolve before v1.0. 36 tests pass; `mypy
---strict` clean; no unreleased breaking changes. Used in the wild but you
-should pin the minor version in production.
-
----
-
-## Why personakit?
-
-Building a specialist LLM agent shouldn't take 200 lines of chain wiring.
-
-Every specialist — regardless of domain — has the same anatomy:
-
-- A **role** the agent plays
-- **Knowledge bodies** it draws from and cites
-- **Diagnostic questions** it asks of any input
-- **Safety triggers** demanding immediate action
-- **Output categories** organizing what it recommends
-
-That anatomy holds whether your specialist reviews legal documents,
-evaluates clinical cases, audits financial transactions, scores research
-papers, drafts user stories, scopes engineering work, supports customers,
-moderates content, qualifies sales leads, grades coursework, or any of a
-thousand other roles. **personakit captures the anatomy.** You bring the
-role.
-
-You describe WHO the specialist is, as data. The library produces a typed,
-cited, safety-aware agent that runs on any LLM provider — without chain
-wiring, graph building, or orchestration code.
-
-**The discipline is the role description.** Everything else — JSON schema
-generation, red-flag matching (deterministic + semantic), citation
-enforcement, provider routing, structured-output validation — is automatic.
-
-If a domain expert can articulate what they look for, what they ask, and
-what they recommend, you can build them an agent in 30 lines.
-
-### The primitives
-
-| Concept             | What it gives you                                                                |
-| ------------------- | -------------------------------------------------------------------------------- |
-| **Specialist**      | Frozen dataclass — the entire agent definition, authorable in YAML               |
-| **Framework**       | Body of knowledge with a citation key, cited in output                           |
-| **Probe**           | Diagnostic question; becomes a typed field in the structured response            |
-| **RedFlag**         | Trigger → severity → action → citation, matched deterministically AND semantically |
-| **Theme**           | User-selectable recommendation category                                          |
-| **Priority**        | Always-on checks reported as met / unmet / unknown                               |
-| **Tool (optional)** | `@tool` decorator — opt-in for external memory, DB, APIs                         |
-
-Core has just two runtime deps: **`pydantic`** and **`httpx`**.
 
 ---
 
@@ -387,6 +374,103 @@ LangGraph node can call `agent.analyze()` and route on `result.has_urgent`.
 Use personakit for what it's best at — the *declarative specialist layer* —
 and reach for the others when the problem actually needs chains, crews, or
 graphs.
+
+---
+
+## FAQ
+
+**Q: Is this a personality classifier (MBTI, Big Five, etc.)?**
+No. personakit is an *agent builder*. It has no trained models, no feature
+extraction, and no personality taxonomy. If you need MBTI or Big Five, look at
+`pypersonality` or `persai` — completely different category of library.
+
+**Q: Can it fetch external knowledge (RAG, vector store, real-time APIs)?**
+Yes — via the opt-in `@tool` system. personakit is *bring-your-own-retrieval*:
+wrap your vector store (Pinecone, pgvector, Chroma, Qdrant, Weaviate) or any
+API in a `@tool` function, and the agent uses it. We don't ship a vector store
+because every team already has one they prefer.
+
+**Q: Why not just use LangChain or LangGraph?**
+Different problems. LangChain/LangGraph describe **what the agent does**
+(imperative chains, graphs). personakit describes **who the agent is**
+(declarative role). For role-based agents the declarative approach is ~10×
+less code and lets non-engineers author specialists in YAML. Use personakit
+*inside* a LangChain chain or LangGraph node when you need the chain / graph
+for orchestration.
+
+**Q: Does it work with LiteLLM (Azure, Bedrock, Vertex AI, Ollama, Groq, …)?**
+Yes — install with `pip install 'personakit[litellm]'` and use
+`LiteLLMProvider(default_model="bedrock/anthropic.claude-v2")` (or any LiteLLM
+model string). The `LiteLLMProvider` adapter exposes 100+ providers through
+the same `Agent` interface as the native OpenAI / Anthropic adapters.
+
+**Q: What does it depend on?**
+Just two runtime dependencies: **`pydantic`** and **`httpx`**. Providers
+(`openai`, `anthropic`, `litellm`, `pyyaml`) ship as optional extras —
+install only what you need. Total transitive footprint on a fresh venv with
+no extras: ~12 packages.
+
+**Q: Do I need to be a Python expert to use it?**
+No. The minimum useful Specialist is a name + a persona string. You can
+declare more capable specialists in pure YAML — no Python required for the
+authoring side. An engineer plugs the YAML into the runtime in 2 lines of code.
+
+**Q: Is it production-ready?**
+It's v0.1.7 — **alpha**. API may evolve before v1.0. 44 tests pass; `mypy
+--strict` clean across 25 source files; no unreleased breaking changes. Used
+in real applications, but pin the minor version in production until v1.0.
+
+**Q: Is there commercial support / a hosted offering?**
+No. personakit is an independent open-source project — MIT licensed, no SaaS
+tier, no telemetry, no upsell path. Use it freely.
+
+**Q: Can I contribute?**
+Yes — see [Contributing](#contributing) below. Bug reports, feature requests,
+new bundled specialists, and PRs all welcome.
+
+---
+
+## Contributing
+
+personakit is a solo independent project — every contribution counts.
+
+### Quick start
+
+```bash
+git clone https://github.com/Majidul17068/personakit.git
+cd personakit
+python -m venv .venv && source .venv/bin/activate
+pip install -e '.[dev,openai,anthropic,litellm,yaml]'
+```
+
+### Quality gates (all must pass before opening a PR)
+
+```bash
+pytest                # unit tests — currently 44 passing
+mypy --strict src     # zero errors across all source files
+ruff check src tests  # lint
+python -m build       # wheel + sdist build cleanly
+```
+
+### What's most useful
+
+- **New bundled specialists** for domains we don't yet cover (`src/personakit/examples/`).
+  See `code_reviewer.py` or `fintech_reviewer.py` as templates.
+- **Bug reports** with a minimal reproduction — open an [issue](https://github.com/Majidul17068/personakit/issues).
+- **Real-world API feedback** — what's clunky, what's missing, where it breaks.
+- **Documentation improvements** — clarifications, fixes, examples.
+
+PRs land faster when they include a test for the change.
+
+---
+
+## Privacy
+
+personakit does **not** collect telemetry. No network calls outside the LLM
+provider you configure. No analytics, no anonymous usage statistics, no
+phoning home. The library is a thin layer over your own LLM API key.
+
+---
 
 ## Status
 
