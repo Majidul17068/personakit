@@ -7,6 +7,99 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-27
+
+The first MINOR release. Closes the four "table-stakes" gaps that were
+keeping personakit behind the broader ecosystem on basics. Together they
+make the package genuinely production-ready alongside its differentiating
+features (red flags, declarative specialists, audit-grade output).
+
+### Added
+
+#### Streaming — `Agent.analyze_stream(text)`
+
+Live, event-driven analysis. Yields a typed `StreamEvent` stream:
+
+- `red_flag_pre_match` — fires immediately for deterministic regex hits
+- `text_delta` — text fragments as the LLM streams its response
+- `tool_call` / `tool_result` — wrap each tool invocation in the loop
+- `iteration_complete` — marks each tool-loop round
+- `complete` — carries the full `AnalyzeResult` at the end
+- `error` — surfaces stream-level failures
+
+Native streaming on **OpenAI**, **Anthropic** (with `tool_use` /
+`tool_result` content-block translation), **LiteLLM** (100+ providers),
+and **MockProvider** (chunk-based simulation for tests).
+
+#### OpenTelemetry hooks — `personakit.observability`
+
+Three tracer span points wrap every `Agent.analyze` call:
+
+  - `personakit.analyze` — the top-level invocation
+  - `personakit.provider.complete` — every LLM round-trip
+  - `personakit.tool.invoke` — every tool execution
+
+`Tracer` is a Protocol — write your own (~30 lines) or plug in
+`OpenTelemetryTracer` via the new `personakit[otel]` extra. Default is
+`NullTracer` (no-op). Spans carry attributes for specialist name, provider,
+token usage, tool name, and known/unknown tool flag.
+
+#### Token cost tracking — `personakit.cost`
+
+`AnalyzeResult.estimated_cost_usd` returns a USD float (or `None` for
+unknown models). Pricing tables shipped for ~25 popular models across
+OpenAI, Anthropic, Google Gemini, Groq, DeepSeek, Mistral, plus zero-cost
+entries for Ollama / local models.
+
+`register_pricing(model, input_per_1m, output_per_1m)` lets callers add
+custom or self-hosted rates. Prefix-matching means dated model ids like
+`gpt-4o-2024-08-06` resolve correctly to the base `gpt-4o` rate.
+
+`AnalyzeResult.model` is now populated for cost lookup.
+
+#### Conversational sessions — `ConversationalAgent` + `Session`
+
+Multi-turn agents with persistent history. `Session.send(message)` wraps
+each `analyze` call with the prior conversation as context.
+`Session.serialize()` / `Session.deserialize()` for caller-managed
+persistence (Redis / Postgres / file — your choice). `Session.chat()` for
+free-form replies that bypass the structured-output pipeline.
+
+`max_history_turns` configurable per agent (default 12). `session.reset()`
+clears state.
+
+### New extras
+
+- `pip install 'personakit[otel]'` — opentelemetry-api / opentelemetry-sdk
+
+### Public API additions
+
+```python
+from personakit import (
+    # Streaming
+    StreamEvent,
+    # Observability
+    Tracer, NullTracer, OpenTelemetryTracer,
+    # Sessions
+    ConversationalAgent, Session, SessionTurn,
+)
+```
+
+### Tests
+
+- 32 new tests across streaming, observability, cost, sessions
+- 93/93 unit tests passing (up from 61)
+- Mock-driven: zero network, zero API keys required
+
+### Quality
+
+- mypy --strict: Success on 29 source files
+- ruff: clean
+- twine check: PASSED
+- No breaking changes — code written against v0.1.x continues to work
+  identically. New methods (`analyze_stream`) and parameters (`tracer`,
+  `max_history_turns`) are additive.
+
 ## [0.1.8] — 2026-04-27
 
 ### Added — Real-time web knowledge from URLs

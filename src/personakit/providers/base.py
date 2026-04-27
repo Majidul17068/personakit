@@ -2,13 +2,14 @@
 
 Every provider adapter implements the `LLMProvider` protocol — a single async
 `complete()` method that takes a list of messages plus optional JSON schema for
-structured output. Authors never touch providers directly; the Agent selects
-the right one via `Agent(specialist=..., model=...)` and falls back to the
-explicitly supplied provider if given.
+structured output. Streaming is exposed via the optional `stream()` method;
+providers that don't override it inherit a default that calls `complete()` and
+emits the entire response as one chunk.
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field
@@ -48,6 +49,23 @@ class LLMResponse(BaseModel):
     raw: dict[str, Any] = Field(default_factory=dict)
 
 
+class StreamChunk(BaseModel):
+    """A single chunk emitted by `LLMProvider.stream()`.
+
+    The first chunks may carry only text deltas. The final chunk includes the
+    complete response (text, tool_calls, usage). Consumers should accumulate
+    `text_delta` until they see `is_final=True` and then read the assembled
+    fields. See `Agent.analyze_stream` for typical usage.
+    """
+
+    text_delta: str = ""
+    is_final: bool = False
+    finish_reason: str | None = None
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
+    usage: dict[str, Any] = Field(default_factory=dict)
+    model: str = ""
+
+
 @runtime_checkable
 class LLMProvider(Protocol):
     """Uniform interface every provider implements."""
@@ -65,3 +83,15 @@ class LLMProvider(Protocol):
         tools: list[dict[str, Any]] | None = None,
         **kwargs: Any,
     ) -> LLMResponse: ...
+
+    def stream(
+        self,
+        messages: list[Message],
+        *,
+        model: str | None = None,
+        response_schema: dict[str, Any] | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[StreamChunk]: ...

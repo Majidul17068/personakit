@@ -25,9 +25,11 @@ from .errors import (
     SpecialistValidationError,
     ToolError,
 )
+from .observability import NullTracer, OpenTelemetryTracer, Tracer
 from .prompt_builder import PromptBuilder
 from .registry import SpecialistRegistry
-from .result import AnalyzeResult, Recommendation, TriggeredRedFlag
+from .result import AnalyzeResult, Recommendation, StreamEvent, TriggeredRedFlag
+from .session import ConversationalAgent, Session, SessionTurn
 from .specialist import (
     FocusAreas,
     Framework,
@@ -39,7 +41,7 @@ from .specialist import (
     Theme,
 )
 
-__version__ = "0.1.8"
+__version__ = "0.2.0"
 __author__ = "Majidul Islam"
 __email__ = "contact.majidul.islam@gmail.com"
 __license__ = "MIT"
@@ -56,12 +58,20 @@ __all__ = [  # noqa: RUF022 - grouped logically, not alphabetically
     "FocusAreas",
     # Runtime
     "Agent",
+    "ConversationalAgent",
+    "Session",
+    "SessionTurn",
     "PromptBuilder",
     "SpecialistRegistry",
     # Results
     "AnalyzeResult",
     "Recommendation",
     "TriggeredRedFlag",
+    "StreamEvent",
+    # Observability
+    "Tracer",
+    "NullTracer",
+    "OpenTelemetryTracer",
     # Errors
     "PersonakitError",
     "SpecialistValidationError",

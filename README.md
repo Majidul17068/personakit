@@ -13,7 +13,7 @@
   <a href="https://pypi.org/project/personakit/"><img src="https://img.shields.io/pypi/pyversions/personakit.svg" alt="Python versions" /></a>
   <a href="https://pypi.org/project/personakit/"><img src="https://img.shields.io/pypi/dm/personakit.svg" alt="Downloads" /></a>
   <a href="https://github.com/Majidul17068/personakit/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/personakit.svg" alt="License" /></a>
-  <a href="https://github.com/Majidul17068/personakit/tree/main/tests"><img src="https://img.shields.io/badge/tests-44%20passing-brightgreen.svg" alt="Tests" /></a>
+  <a href="https://github.com/Majidul17068/personakit/tree/main/tests"><img src="https://img.shields.io/badge/tests-93%20passing-brightgreen.svg" alt="Tests" /></a>
   <a href="https://github.com/Majidul17068/personakit/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/mypy-strict-blue.svg" alt="mypy strict" /></a>
 </p>
 
@@ -140,6 +140,76 @@ print(result.has_urgent)            # True
 
 That's the whole agent. No chain wiring. One `Specialist` dataclass. Typed,
 cited, safety-aware output.
+
+---
+
+## Production-ready in v0.2
+
+Four features that turn personakit from "interesting alpha" into something
+you can deploy:
+
+### Streaming — `agent.analyze_stream(text)`
+
+```python
+async for event in agent.analyze_stream(case_text):
+    if event.type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.type == "red_flag_pre_match":
+        print(f"\n🚨 {event.red_flag.trigger}")
+    elif event.type == "complete":
+        result = event.result   # full AnalyzeResult
+```
+
+Live event stream with deterministic red flags fired up front, text deltas
+as the LLM types, tool-call lifecycles, and a final structured result.
+Native streaming on OpenAI, Anthropic, LiteLLM (100+ providers), and
+MockProvider.
+
+### OpenTelemetry hooks — `personakit.observability`
+
+```python
+from personakit.observability import OpenTelemetryTracer
+agent = Agent(specialist=..., model="gpt-4o", tracer=OpenTelemetryTracer())
+```
+
+Three span points: `personakit.analyze`, `personakit.provider.complete`,
+`personakit.tool.invoke`. Plug in your existing OTel pipeline (LangSmith,
+Datadog, Honeycomb, Jaeger) — or implement the `Tracer` Protocol in 30
+lines for any other backend. Install: `pip install 'personakit[otel]'`.
+
+### Token cost tracking — `result.estimated_cost_usd`
+
+```python
+result = await agent.analyze(text)
+print(result.usage)              # {"prompt_tokens": 1200, "completion_tokens": 350}
+print(result.estimated_cost_usd) # 0.00465
+```
+
+Pricing tables for ~25 models (OpenAI, Anthropic, Gemini, Groq, DeepSeek,
+Mistral). Local models (Ollama, vLLM) cost `0.0`. Unknown models return
+`None` so callers can distinguish "unknown" from "free". Add custom rates
+with `register_pricing(...)`.
+
+### Conversational sessions — `ConversationalAgent` + `Session`
+
+```python
+from personakit import ConversationalAgent
+from personakit.examples import CUSTOMER_SUPPORT_TRIAGE
+
+agent = ConversationalAgent(specialist=CUSTOMER_SUPPORT_TRIAGE, model="gpt-4o-mini")
+session = agent.start_session(user_id="alice")
+
+reply1 = await session.send("My order ORD-1002 is late")
+reply2 = await session.send("It's been 3 weeks now")  # remembers turn 1
+
+# Caller-managed persistence — serialise to your choice of store
+blob = session.serialize()
+restored = Session.deserialize(blob, agent=agent)
+```
+
+Multi-turn memory with a configurable history window. No database
+required — sessions serialise to a string the caller can stick in
+Redis, Postgres, or a JSON file.
 
 ---
 
@@ -362,11 +432,13 @@ support = registry.get("support_triage")
 
 | Extra                   | Install                   | What you get                                 |
 | ----------------------- | ------------------------- | -------------------------------------------- |
-| `personakit[openai]`    | `openai>=1.0`             | Native OpenAI SDK — `gpt-4o-mini` default    |
-| `personakit[anthropic]` | `anthropic>=0.20`         | Native Anthropic SDK — `claude-sonnet-4-6`   |
-| `personakit[litellm]`   | `litellm>=1.40`           | **100+ providers via one extra** (see below) |
-| `personakit[yaml]`      | `pyyaml>=6.0`             | YAML specialist authoring                    |
-| `personakit[all]`       | all of the above          | Everything                                   |
+| `personakit[openai]`    | `openai>=1.0`                                   | Native OpenAI SDK — `gpt-4o-mini` default    |
+| `personakit[anthropic]` | `anthropic>=0.20`                               | Native Anthropic SDK — `claude-sonnet-4-6`   |
+| `personakit[litellm]`   | `litellm>=1.40`                                 | **100+ providers via one extra** (see below) |
+| `personakit[web]`       | `beautifulsoup4>=4.12`, `trafilatura>=1.6`      | URL fetch + article extraction + search      |
+| `personakit[otel]`      | `opentelemetry-api>=1.20`, `-sdk>=1.20`         | OpenTelemetry tracer adapter                 |
+| `personakit[yaml]`      | `pyyaml>=6.0`                                   | YAML specialist authoring                    |
+| `personakit[all]`       | all of the above                                | Everything                                   |
 
 ### 100+ providers via LiteLLM
 
