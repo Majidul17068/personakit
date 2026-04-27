@@ -7,6 +7,27 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-04-24
+
+### Changed
+- **README — domain-neutral repositioning of the "why" section.** External
+  reviewers had been reading personakit as a tool for "code review, fintech,
+  customer support, or scrum" because the same four examples kept appearing
+  in multiple sections. The new "Why personakit?" section foregrounds the
+  universal pattern (a role + knowledge bodies + diagnostic questions +
+  safety triggers + output categories) that applies to *any* specialist
+  domain, and lists ten different role-types in a single sweeping sentence
+  ("legal review, clinical triage, financial audit, research evaluation,
+  product spec, engineering review, customer support, content moderation,
+  sales qualification, coursework grading, and any of a thousand other
+  roles") so no single domain dominates.
+- Removed the "How it works" ASCII-diagram section. The data flow it showed
+  was already implicit in the 30-second quickstart, the "What personakit IS"
+  block, and the "Why personakit?" section — the diagram was redundant and
+  read as low-effort compared to the surrounding sections.
+
+No code changes. README / metadata only.
+
 ## [0.1.5] — 2026-04-24
 
 ### Added

@@ -77,31 +77,6 @@ cited, safety-aware output.
 
 ---
 
-## How it works
-
-```
-┌──────────────────┐    ┌─────────────────────┐    ┌──────────────────────┐
-│ Specialist       │ →  │ personakit          │ →  │ Agent.analyze(text)  │
-│ (role as data:   │    │ PromptBuilder +     │    │                      │
-│  persona,        │    │ auto-derived JSON   │    │ Structured result:   │
-│  frameworks,     │    │ schema +            │    │  • summary           │
-│  probes,         │    │ red-flag matcher    │    │  • probes_answered   │
-│  red flags,      │    │ (regex + semantic)  │    │  • red_flags_triggered│
-│  themes)         │    │                     │    │  • recommendations   │
-└──────────────────┘    └─────────────────────┘    │  • citations_used    │
-         ▲                        │                 └──────────────────────┘
-         │                        ▼
-         │              ┌─────────────────────┐
-         │              │ LLM provider        │
-         │              │ (OpenAI / Anthropic │
-         │              │  / local / mock)    │
-         │              └─────────────────────┘
-         │
-   Authorable in Python OR YAML — hand the YAML to a domain expert.
-```
-
----
-
 ## Bundled specialists — 7 domains, zero boilerplate
 
 Import any of these directly, or read the source as a template:
@@ -159,32 +134,47 @@ should pin the minor version in production.
 
 ---
 
-## The idea
+## Why personakit?
 
-A specialist agent is rarely about *retrieval* — it's about **role, tone,
-knowledge frameworks, diagnostic questions, safety triggers, and output
-shape**. All of that can be captured declaratively:
+Building a specialist LLM agent shouldn't take 200 lines of chain wiring.
 
-- A **code reviewer** has frameworks (OWASP, SOLID), probes (does it have tests? what's the blast radius?), and red flags (hard-coded secrets, SQL injection).
-- A **fintech compliance officer** has frameworks (AML/BSA, OFAC, FATF typologies), probes (amount, country pair, velocity), and red flags (sanctioned counterparty, structuring).
-- A **customer support triage agent** has frameworks (refund policy, escalation matrix), probes (order ID, sentiment), and red flags (chargeback language, data request).
-- A **scrum master** has frameworks (Scrum Guide, DORA), probes (days remaining, WIP count), and red flags (scope creep, external blocker without owner).
+Every specialist — regardless of domain — has the same anatomy:
 
-personakit turns that shape into a library. One `Specialist` object = one
-declarative agent. Ship it via Python, or hand a YAML file to a domain expert
-and let them author without touching any chain code.
+- A **role** the agent plays
+- **Knowledge bodies** it draws from and cites
+- **Diagnostic questions** it asks of any input
+- **Safety triggers** demanding immediate action
+- **Output categories** organizing what it recommends
 
-The distinctive primitives:
+That anatomy holds whether your specialist reviews legal documents,
+evaluates clinical cases, audits financial transactions, scores research
+papers, drafts user stories, scopes engineering work, supports customers,
+moderates content, qualifies sales leads, grades coursework, or any of a
+thousand other roles. **personakit captures the anatomy.** You bring the
+role.
 
-| Concept      | What it gives you                                                      |
-| ------------ | ---------------------------------------------------------------------- |
-| **Specialist** | Frozen dataclass — the entire agent definition, authorable in YAML   |
-| **Framework**  | Body of knowledge with a citation key, cited in output               |
-| **Probe**      | Diagnostic question; becomes a typed field in the structured response |
-| **RedFlag**    | Trigger → severity → action → citation, matched deterministically AND semantically |
-| **Theme**      | User-selectable recommendation category                              |
-| **Priority**   | Always-on checks reported as met / unmet / unknown                   |
-| **Tool (optional)** | `@tool` decorator — opt-in for external memory, DB, APIs         |
+You describe WHO the specialist is, as data. The library produces a typed,
+cited, safety-aware agent that runs on any LLM provider — without chain
+wiring, graph building, or orchestration code.
+
+**The discipline is the role description.** Everything else — JSON schema
+generation, red-flag matching (deterministic + semantic), citation
+enforcement, provider routing, structured-output validation — is automatic.
+
+If a domain expert can articulate what they look for, what they ask, and
+what they recommend, you can build them an agent in 30 lines.
+
+### The primitives
+
+| Concept             | What it gives you                                                                |
+| ------------------- | -------------------------------------------------------------------------------- |
+| **Specialist**      | Frozen dataclass — the entire agent definition, authorable in YAML               |
+| **Framework**       | Body of knowledge with a citation key, cited in output                           |
+| **Probe**           | Diagnostic question; becomes a typed field in the structured response            |
+| **RedFlag**         | Trigger → severity → action → citation, matched deterministically AND semantically |
+| **Theme**           | User-selectable recommendation category                                          |
+| **Priority**        | Always-on checks reported as met / unmet / unknown                               |
+| **Tool (optional)** | `@tool` decorator — opt-in for external memory, DB, APIs                         |
 
 Core has just two runtime deps: **`pydantic`** and **`httpx`**.
 
