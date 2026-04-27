@@ -7,6 +7,110 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-04-27
+
+### Added — Real-time web knowledge from URLs
+
+The headline feature: **personakit can now use any URL as an external
+knowledge source**, in two complementary patterns, across all providers.
+
+- **Pattern A — pre-fetch.** Fetch a URL yourself with `fetch_url.invoke()`
+  and pass the content to `Agent.analyze(extra_context=...)`. Single LLM
+  call, deterministic, no token spent on the model deciding whether to fetch.
+- **Pattern B — autonomous tool loop.** Attach the web tools via
+  `Agent.with_tools([...])` and let the LLM decide when to fetch. The new
+  multi-turn tool loop in `Agent.analyze()` invokes the tool, feeds the
+  result back, and repeats until the LLM produces the final structured
+  response (or `max_tool_iterations` is reached).
+
+#### `personakit.web` module — opt-in via `personakit[web]`
+
+```bash
+pip install 'personakit[web]'
+```
+
+Four ready-made tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `fetch_url(url, max_chars=8000)` | HTTP GET + text extraction (BeautifulSoup) |
+| `extract_article(url, max_chars=12000)` | Smart article extraction (trafilatura) |
+| `tavily_search(query, max_results=5)` | LLM-optimised web search (Tavily API) |
+| `serper_search(query, max_results=5)` | Google SERP search (Serper API) |
+
+All four are typed, documented, gracefully handle missing API keys, and
+return structured dicts.
+
+#### Multi-turn tool-calling loop in `Agent.analyze()`
+
+Previously the Agent forwarded tool schemas to the LLM but did not auto-loop
+the execution. v0.1.8 closes that gap with a real loop:
+
+1. Provider returns `tool_calls` in the response
+2. Agent looks up each tool by name in `self.tools`
+3. Parses arguments, invokes locally (sync or async)
+4. Appends an assistant message (with `tool_calls`) and one `role="tool"`
+   message per result to the conversation history
+5. Calls the provider again with the augmented history
+6. Repeats until no `tool_calls` are emitted, or `max_tool_iterations` is
+   reached
+
+Tool errors and unknown-tool requests are reported back to the LLM as
+structured error payloads — they don't crash the agent. Token usage is
+accumulated across iterations and surfaced via `result.usage`.
+
+The loop is **identical across providers**:
+
+- **OpenAI** — native `tool_calls` array
+- **LiteLLM** — same OpenAI shape (so 100+ providers work)
+- **Anthropic** — translated to and from `tool_use` / `tool_result` content
+  blocks. New `_to_anthropic_message()` and `_to_anthropic_tools()` helpers
+  in `providers/anthropic.py` handle the format conversion bidirectionally.
+- **MockProvider** — extended to accept `LLMResponse` instances and
+  `tool_calls`-shaped dicts in its response queue, so multi-turn tool-call
+  scenarios are testable without a network.
+
+#### `Message.tool_calls` field
+
+The provider-agnostic `Message` model now includes an optional `tool_calls`
+list to carry the LLM's tool requests through the conversation. Backward
+compatible — `content` retains its default of `""`, and existing code that
+doesn't set `tool_calls` continues to work unchanged.
+
+#### `Agent(max_tool_iterations=6)`
+
+New constructor parameter (and `Agent.with_tools()` propagates it). Caps the
+tool-loop iterations to prevent runaway cost if the LLM keeps requesting
+tools. Default 6.
+
+### Tests
+
+- 7 new tests in `tests/test_tool_loop.py` covering: 2-turn flow, unknown
+  tool resilience, tool exception resilience, max iterations cap, usage
+  accumulation, no-tools-attached compatibility, async tool support.
+- 10 new tests in `tests/test_web_tools.py` covering: `fetch_url`
+  extraction / truncation / HTTP error handling / schema correctness;
+  `tavily_search` and `serper_search` endpoint correctness, missing-API-key
+  errors, max_results clamping; cross-tool exports.
+- All HTTP calls are mocked at the `httpx` level — tests run offline in
+  CI, no real network.
+- 61/61 unit tests passing (up from 44).
+
+### Changed
+
+- `MockProvider.responses` now accepts `LLMResponse` instances directly,
+  alongside strings and dicts. This lets tests construct precise multi-turn
+  tool-call scenarios.
+- `pyproject.toml`: new optional extra `personakit[web]` requiring
+  `beautifulsoup4>=4.12` and `trafilatura>=1.6`. Added to the `all` extra.
+
+### Compatibility
+
+No breaking changes. Code written against v0.1.7 continues to work
+identically — the tool loop only kicks in when tools are attached to the
+Agent and the LLM emits tool_calls. Single-shot behaviour is preserved
+when `tools=[]` (the no-tools case bypasses the loop after one iteration).
+
 ## [0.1.7] — 2026-04-27
 
 ### Added

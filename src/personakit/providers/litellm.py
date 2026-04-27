@@ -148,7 +148,24 @@ class LiteLLMProvider:
 
     @staticmethod
     def _serialise(message: Message) -> dict[str, Any]:
-        data: dict[str, Any] = {"role": message.role, "content": message.content}
+        data: dict[str, Any] = {"role": message.role}
+        # LiteLLM normalises to OpenAI shape, so we use the same tool-call
+        # serialisation as OpenAIProvider.
+        if message.role == "assistant" and message.tool_calls:
+            data["content"] = message.content or None
+            data["tool_calls"] = [
+                {
+                    "id": call["id"],
+                    "type": "function",
+                    "function": {
+                        "name": call["name"],
+                        "arguments": call.get("arguments") or "{}",
+                    },
+                }
+                for call in message.tool_calls
+            ]
+        else:
+            data["content"] = message.content
         if message.name:
             data["name"] = message.name
         if message.tool_call_id:

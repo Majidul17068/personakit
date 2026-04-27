@@ -17,12 +17,24 @@ Role = Literal["system", "user", "assistant", "tool"]
 
 
 class Message(BaseModel):
-    """A single chat message in the provider-agnostic format."""
+    """A single chat message in the provider-agnostic format.
+
+    Most messages have just `role` + `content`. Two extras support the
+    tool-calling loop:
+
+    - `tool_calls` — set on `role="assistant"` messages when the model has
+      requested one or more tool invocations. Each entry is an OpenAI-shaped
+      dict with `id`, `name`, `arguments` (str). Providers translate to their
+      native format on the wire.
+    - `tool_call_id` — set on `role="tool"` messages to associate a tool's
+      execution result with the originating call.
+    """
 
     role: Role
-    content: str
+    content: str = ""
     name: str | None = None
     tool_call_id: str | None = None
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class LLMResponse(BaseModel):

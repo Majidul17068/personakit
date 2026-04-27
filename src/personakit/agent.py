@@ -40,6 +40,7 @@ class Agent:
         temperature: float | None = 0.2,
         max_tokens: int | None = None,
         tools: list[Any] | None = None,
+        max_tool_iterations: int = 6,
     ) -> None:
         if provider is None:
             if model is None:
@@ -54,6 +55,7 @@ class Agent:
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.tools = list(tools) if tools else []
+        self.max_tool_iterations = max_tool_iterations
 
     def with_tools(self, tools: list[Any]) -> Agent:
         """Return a new Agent with the given tools attached."""
@@ -65,6 +67,7 @@ class Agent:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             tools=(self.tools + list(tools)) if tools else self.tools,
+            max_tool_iterations=self.max_tool_iterations,
         )
 
     async def analyze(
@@ -74,7 +77,20 @@ class Agent:
         selected_themes: list[str] | None = None,
         extra_context: str | None = None,
     ) -> AnalyzeResult:
-        """Run the specialist's full analysis pipeline against `input_text`."""
+        """Run the specialist's full analysis pipeline against `input_text`.
+
+        If the Agent has tools attached and the underlying LLM emits tool calls,
+        the loop:
+
+          1. Receives the LLM's `tool_calls` in its response
+          2. Invokes each tool locally with the parsed arguments
+          3. Appends the assistant message + tool result messages to the history
+          4. Calls the LLM again with the augmented history
+
+        The loop continues until the LLM stops emitting `tool_calls`, or until
+        `max_tool_iterations` is reached. Token usage is accumulated across
+        iterations.
+        """
         system_prompt = self.prompt_builder.build_system_prompt(
             self.specialist, selected_themes=selected_themes
         )
@@ -93,16 +109,78 @@ class Agent:
 
         pre = pre_match(self.specialist, input_text)
 
-        response = await self.provider.complete(
-            messages,
-            model=self.model,
-            response_schema=schema,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            tools=_tool_payload(self.tools) if self.tools else None,
-        )
+        tools_payload = _tool_payload(self.tools) if self.tools else None
+        tools_by_name = {t.name: t for t in self.tools if hasattr(t, "name")}
 
-        parsed = _parse_json(response.text)
+        response: Any = None
+        accumulated_usage: dict[str, Any] = {}
+
+        for _iteration in range(self.max_tool_iterations):
+            response = await self.provider.complete(
+                messages,
+                model=self.model,
+                response_schema=schema,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                tools=tools_payload,
+            )
+
+            # Accumulate token usage across iterations
+            for key, value in response.usage.items():
+                if isinstance(value, (int, float)):
+                    accumulated_usage[key] = accumulated_usage.get(key, 0) + value
+
+            if not response.tool_calls:
+                break
+
+            # Append the assistant turn that asked for tool(s)
+            messages.append(
+                Message(
+                    role="assistant",
+                    content=response.text or "",
+                    tool_calls=response.tool_calls,
+                )
+            )
+
+            # Execute each tool call and append a tool-result message per call
+            for call in response.tool_calls:
+                tool_id = call.get("id") or ""
+                tool_name = call.get("name") or ""
+                args_raw = call.get("arguments")
+
+                if isinstance(args_raw, str):
+                    try:
+                        args = json.loads(args_raw) if args_raw else {}
+                    except json.JSONDecodeError:
+                        args = {}
+                elif isinstance(args_raw, dict):
+                    args = args_raw
+                else:
+                    args = {}
+
+                tool_obj = tools_by_name.get(tool_name)
+                if tool_obj is None:
+                    result_str = json.dumps(
+                        {"error": f"Unknown tool requested by LLM: {tool_name!r}"}
+                    )
+                else:
+                    try:
+                        invocation = await tool_obj.invoke(**args)
+                        result_str = json.dumps(invocation, default=str)
+                    except Exception as exc:
+                        result_str = json.dumps(
+                            {"error": f"Tool {tool_name!r} raised: {exc!r}"}
+                        )
+
+                messages.append(
+                    Message(role="tool", content=result_str, tool_call_id=tool_id)
+                )
+        else:
+            # for-else: ran max iterations without break — the LLM kept calling tools.
+            # response is still set to the most recent provider response.
+            pass
+
+        parsed = _parse_json(response.text) if response and response.text else {}
         llm_hits = parsed.get("red_flags_detected", []) or []
         merged = merge_post(self.specialist, pre, llm_hits)
 
@@ -139,8 +217,8 @@ class Agent:
             recommendations=recommendations,
             priorities_status=parsed.get("priorities_status", []) or [],
             citations_used=citations_used,
-            raw_output=response.text,
-            usage=response.usage,
+            raw_output=response.text if response else "",
+            usage=accumulated_usage,
         )
 
     def analyze_sync(

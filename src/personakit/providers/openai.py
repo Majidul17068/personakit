@@ -94,7 +94,24 @@ class OpenAIProvider:
 
     @staticmethod
     def _serialise(message: Message) -> dict[str, Any]:
-        data: dict[str, Any] = {"role": message.role, "content": message.content}
+        data: dict[str, Any] = {"role": message.role}
+        # Assistant messages with tool_calls may have empty content. OpenAI
+        # accepts content=null in that case but pydantic gives us "". Normalise.
+        if message.role == "assistant" and message.tool_calls:
+            data["content"] = message.content or None
+            data["tool_calls"] = [
+                {
+                    "id": call["id"],
+                    "type": "function",
+                    "function": {
+                        "name": call["name"],
+                        "arguments": call.get("arguments") or "{}",
+                    },
+                }
+                for call in message.tool_calls
+            ]
+        else:
+            data["content"] = message.content
         if message.name:
             data["name"] = message.name
         if message.tool_call_id:

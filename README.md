@@ -248,10 +248,10 @@ result.priorities_status      # per-priority met / unmet / unknown
 result.has_urgent             # convenience boolean
 ```
 
-## Tools — opt-in, for external memory & APIs
+## Tools — opt-in, with a real multi-turn loop
 
 Core has zero coupling to tool calling. When you want tools, decorate functions
-and attach:
+and attach them to an Agent:
 
 ```python
 from personakit.tools import tool
@@ -266,12 +266,82 @@ def search_knowledge_base(query: str, top_k: int = 5) -> list[str]:
     """Semantic search against the internal KB — your vector store."""
     return kb.search(query, k=top_k)
 
-support_agent = Agent(specialist=CUSTOMER_SUPPORT_TRIAGE, model="gpt-4o-mini")
-support_agent = support_agent.with_tools([lookup_order, search_knowledge_base])
+agent = Agent(specialist=CUSTOMER_SUPPORT_TRIAGE, model="gpt-4o-mini")
+agent = agent.with_tools([lookup_order, search_knowledge_base])
+
+result = await agent.analyze("Where is order ORD-1002?")
+# Behind the scenes:
+#   1. LLM emits tool_calls in its response
+#   2. personakit invokes the matching tool locally
+#   3. The result is fed back into the conversation
+#   4. The LLM produces the final structured analysis
 ```
 
-OpenAI and Anthropic tool-calling happen through the same interface. Schemas
-are auto-built from your function signatures and docstrings.
+The loop runs across **OpenAI**, **Anthropic**, **LiteLLM**, and **MockProvider**
+identically — personakit normalises between OpenAI's `tool_calls` array and
+Anthropic's `tool_use` / `tool_result` content blocks internally. Schemas are
+auto-built from your function signatures and docstrings.
+
+Bound the loop with `Agent(..., max_tool_iterations=6)` to cap cost; defaults
+to 6.
+
+## Real-time knowledge from URLs (`personakit[web]`)
+
+For the common case "I want my agent to use a web link as its knowledge
+source", personakit ships a small set of ready-made tools:
+
+```bash
+pip install 'personakit[web]'
+```
+
+```python
+from personakit import Agent
+from personakit.web import fetch_url, extract_article, tavily_search
+from personakit.examples import FINTECH_TRANSACTION_REVIEWER
+```
+
+### Pattern A — pre-fetch (deterministic, single LLM call)
+
+Fetch the URL yourself, pass the content as `extra_context`. Best when *you*
+know the URL up front (e.g. a user submits a link).
+
+```python
+fetched = await fetch_url.invoke(url="https://www.reuters.com/some-article")
+result = await agent.analyze(
+    "Is the entity in this press release on any sanctions list?",
+    extra_context=f"Source: {fetched['final_url']}\n\n{fetched['text']}",
+)
+```
+
+### Pattern B — LLM decides when to fetch (autonomous)
+
+Attach the tools and let the agent decide. Best when the agent might need
+multiple sources or doesn't know in advance whether to fetch.
+
+```python
+agent = (
+    Agent(specialist=FINTECH_TRANSACTION_REVIEWER, model="gpt-4o-mini")
+    .with_tools([fetch_url, tavily_search])
+)
+
+result = await agent.analyze(
+    "Verify this counterparty against current sanctions lists: ACME Holdings Pte Ltd"
+)
+# The LLM may call tavily_search first, then fetch_url on a result link,
+# then return the final analysis. The tool loop runs all of it.
+```
+
+### Available web tools
+
+| Tool | Purpose | Requirements |
+|---|---|---|
+| `fetch_url(url, max_chars=8000)` | HTTP GET + text extraction (BeautifulSoup) | `personakit[web]` |
+| `extract_article(url, max_chars=12000)` | Smarter article extraction (trafilatura) | `personakit[web]` |
+| `tavily_search(query, max_results=5)` | LLM-optimised web search | `TAVILY_API_KEY` env var |
+| `serper_search(query, max_results=5)` | Google SERP search | `SERPER_API_KEY` env var |
+
+Both Tavily and Serper offer free tiers (1,000 / 2,500 searches/month). All
+four work cross-provider — same agent, same tool list, any LLM backend.
 
 ## Registry — one app, many specialists
 
