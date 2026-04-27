@@ -41,7 +41,7 @@ from .specialist import (
     Theme,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "Majidul Islam"
 __email__ = "contact.majidul.islam@gmail.com"
 __license__ = "MIT"

@@ -7,6 +7,26 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-04-27
+
+### Changed
+
+- **README brought fully into sync with v0.2.** Stale references that had
+  accumulated across the v0.1.x cycle (test counts, version numbers, source
+  file counts, the `dev` extras list) were all updated. No code changes —
+  this release exists purely so the corrected README renders on PyPI.
+- The "What personakit IS" block now lists the v0.2 production wiring
+  (streaming, OpenTelemetry hooks, cost tracking, conversational sessions,
+  multi-turn tool loop, web knowledge tools) up front so first-time PyPI
+  visitors see the production story before scrolling.
+- FAQ expanded with five new entries: streaming, observability stack
+  integration, cost tracking, multi-turn conversations, and an updated
+  "is it production-ready?" answer reflecting the new state.
+- Contributing section's quality-gate snippet updated to "93 passing /
+  29 source files" and the dev-extras command now includes `web,otel`.
+- Status section now reads "v0.2.0 — alpha" with the actual production
+  posture instead of a generic "alpha — API may evolve."
+
 ## [0.2.0] — 2026-04-27
 
 The first MINOR release. Closes the four "table-stakes" gaps that were

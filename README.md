@@ -47,6 +47,15 @@ reviewers, scrum masters, and similar domain specialists. You describe the role
 as data; personakit produces the runnable agent backed by OpenAI / Anthropic /
 your local model.
 
+Production wiring shipped in v0.2:
+
+- ✅ Native streaming with `Agent.analyze_stream()` (OpenAI / Anthropic / LiteLLM / Mock)
+- ✅ OpenTelemetry hooks via the `Tracer` protocol — analyze / provider / tool spans
+- ✅ Token cost tracking — `result.estimated_cost_usd` with pricing for ~25 popular models
+- ✅ Multi-turn conversations with `ConversationalAgent` + serialisable `Session`
+- ✅ Multi-turn tool-calling loop — same Specialist works on every provider
+- ✅ Real-time web knowledge via `personakit[web]` (`fetch_url`, `tavily_search`, …)
+
 **personakit is NOT:**
 
 - ❌ **Not a personality classifier** (not MBTI, not Big Five, not trait
@@ -558,9 +567,39 @@ declare more capable specialists in pure YAML — no Python required for the
 authoring side. An engineer plugs the YAML into the runtime in 2 lines of code.
 
 **Q: Is it production-ready?**
-It's v0.1.7 — **alpha**. API may evolve before v1.0. 44 tests pass; `mypy
---strict` clean across 25 source files; no unreleased breaking changes. Used
-in real applications, but pin the minor version in production until v1.0.
+It's v0.2.0 — **alpha**, but with the production basics in place: streaming
+(`Agent.analyze_stream()`), OpenTelemetry hooks (`personakit[otel]`), token
+cost tracking (`result.estimated_cost_usd`), and conversational sessions
+(`ConversationalAgent`). 93 tests pass; `mypy --strict` clean across 29
+source files; no unreleased breaking changes. The API may still evolve
+before v1.0 — pin the minor version in production until then.
+
+**Q: Does it support streaming?**
+Yes. `Agent.analyze_stream(text)` returns an async iterator yielding
+`StreamEvent` objects: `red_flag_pre_match`, `text_delta`, `tool_call`,
+`tool_result`, `iteration_complete`, `complete`, `error`. Streaming works
+natively on OpenAI, Anthropic (with `tool_use` / `tool_result` content-block
+translation), LiteLLM (100+ providers), and `MockProvider`.
+
+**Q: How do I integrate with my existing observability stack
+(LangSmith / Datadog / Honeycomb / Jaeger)?**
+Plug in `OpenTelemetryTracer` (install via `personakit[otel]`) — three
+spans (`personakit.analyze`, `personakit.provider.complete`,
+`personakit.tool.invoke`) flow into your existing OTel pipeline. Or
+implement the `Tracer` Protocol in ~30 lines for any other backend.
+
+**Q: Does it track token cost?**
+Yes. `AnalyzeResult.estimated_cost_usd` returns a USD float for the ~25
+models in the bundled pricing table (OpenAI, Anthropic, Gemini, Groq,
+DeepSeek, Mistral). Local models (Ollama / vLLM) cost `0.0`. Unknown models
+return `None` so callers can distinguish "unknown" from "free". Add custom
+rates with `register_pricing(...)`.
+
+**Q: How do I do multi-turn conversation?**
+Use `ConversationalAgent` + `Session`. The session tracks history; each
+`session.send(message)` includes the prior turns as context. Persist
+sessions yourself (`session.serialize()` returns a JSON blob) — no DB
+requirement.
 
 **Q: Is there commercial support / a hosted offering?**
 No. personakit is an independent open-source project — MIT licensed, no SaaS
@@ -582,14 +621,14 @@ personakit is a solo independent project — every contribution counts.
 git clone https://github.com/Majidul17068/personakit.git
 cd personakit
 python -m venv .venv && source .venv/bin/activate
-pip install -e '.[dev,openai,anthropic,litellm,yaml]'
+pip install -e '.[dev,openai,anthropic,litellm,yaml,web,otel]'
 ```
 
 ### Quality gates (all must pass before opening a PR)
 
 ```bash
-pytest                # unit tests — currently 44 passing
-mypy --strict src     # zero errors across all source files
+pytest                # unit tests — currently 93 passing
+mypy --strict src     # zero errors across 29 source files
 ruff check src tests  # lint
 python -m build       # wheel + sdist build cleanly
 ```
@@ -616,7 +655,12 @@ phoning home. The library is a thin layer over your own LLM API key.
 
 ## Status
 
-Alpha — API may evolve. See [`CHANGELOG.md`](./CHANGELOG.md).
+**v0.2.0 — alpha.** All four production basics shipped (streaming,
+OpenTelemetry, cost tracking, conversational sessions). 93 tests passing,
+`mypy --strict` clean across 29 source files. API may still evolve before
+v1.0 — pin the minor version in production. See [`CHANGELOG.md`](./CHANGELOG.md)
+for the full release history and [`ROADMAP.md`](./ROADMAP.md) for what's
+next.
 
 ## Author
 
