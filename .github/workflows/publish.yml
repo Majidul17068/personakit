@@ -1,0 +1,78 @@
+name: Publish to PyPI
+
+# Triggered when a GitHub Release is published.
+# Uses PyPI Trusted Publishing (OpenID Connect) — no API tokens required.
+# After this workflow lands, the release flow becomes:
+#   1. Bump version in pyproject.toml + src/personakit/__init__.py
+#   2. Update CHANGELOG.md
+#   3. Commit + push, then `git tag vX.Y.Z && git push origin vX.Y.Z`
+#   4. Create a GitHub Release for the tag (web UI or `gh release create`)
+#   5. This workflow auto-builds + publishes to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Twine check
+        run: twine check dist/*
+
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Targets the 'release' GitHub Environment that owns the Trusted Publishing
+    # binding. Optional reviewers configured in the environment add a manual
+    # approval gate before each publish.
+    environment:
+      name: release
+      url: https://pypi.org/project/personakit/
+
+    permissions:
+      # Required for OIDC Trusted Publishing — no tokens to manage.
+      id-token: write
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # Skip versions already on PyPI so re-running historical releases
+          # is harmless (PyPI rejects re-uploads of an existing version).
+          skip-existing: true
+          # No `password:` field — Trusted Publishing uses OIDC.
