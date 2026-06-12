@@ -21,6 +21,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any, cast
 
+from ._logging import enable_verbose_logging, get_logger
 from .errors import CitationMissingError, OutputParseError
 from .matching import merge_post, pre_match
 from .observability import NullTracer, Tracer
@@ -28,6 +29,8 @@ from .prompt_builder import PromptBuilder
 from .providers.base import LLMProvider, Message
 from .result import AnalyzeResult, Recommendation, StreamEvent
 from .specialist import Probe, Specialist
+
+_log = get_logger("agent")
 
 
 class Agent:
@@ -45,7 +48,10 @@ class Agent:
         tools: list[Any] | None = None,
         max_tool_iterations: int = 6,
         tracer: Tracer | None = None,
+        verbose: bool = False,
     ) -> None:
+        if verbose:
+            enable_verbose_logging("INFO")
         if provider is None:
             if model is None:
                 raise ValueError("Agent requires either `provider` or `model`.")
@@ -61,6 +67,14 @@ class Agent:
         self.tools = list(tools) if tools else []
         self.max_tool_iterations = max_tool_iterations
         self.tracer: Tracer = tracer or NullTracer()
+        _log.info(
+            "Agent ready: specialist=%r provider=%s model=%s tools=%d strict=%s",
+            specialist.name,
+            provider.name,
+            model or "(provider default)",
+            len(self.tools),
+            getattr(specialist, "strict", False),
+        )
 
     def with_tools(self, tools: list[Any]) -> Agent:
         """Return a new Agent with the given tools attached."""
@@ -74,6 +88,8 @@ class Agent:
             tools=(self.tools + list(tools)) if tools else self.tools,
             max_tool_iterations=self.max_tool_iterations,
             tracer=self.tracer,
+            # verbose is a one-shot init effect (configures the root logger),
+            # so it's NOT propagated — re-enabling on every clone would be noisy.
         )
 
     async def analyze(
@@ -113,7 +129,24 @@ class Agent:
             Message(role="user", content=user_content),
         ]
 
+        analyze_started = time.perf_counter()
+        _log.info(
+            "analyze started: specialist=%r input_chars=%d themes=%s tools=%d",
+            self.specialist.name,
+            len(input_text),
+            selected_themes or "(all)",
+            len(self.tools),
+        )
+
         pre = pre_match(self.specialist, input_text)
+        if pre:
+            _log.info(
+                "pre-match red flags: %d hit(s) — %s",
+                len(pre),
+                ", ".join(t.red_flag.trigger for t in pre),
+            )
+        else:
+            _log.debug("pre-match red flags: none")
 
         tools_payload = _tool_payload(self.tools) if self.tools else None
         tools_by_name = {t.name: t for t in self.tools if hasattr(t, "name")}
@@ -130,6 +163,14 @@ class Agent:
             tools_count=len(self.tools),
         ) as analyze_span:
             for _iteration in range(self.max_tool_iterations):
+                _log.debug(
+                    "provider call: iter=%d provider=%s model=%s messages=%d",
+                    _iteration,
+                    self.provider.name,
+                    self.model or "(default)",
+                    len(messages),
+                )
+                t_provider = time.perf_counter()
                 with self.tracer.start_span(
                     "personakit.provider.complete",
                     iteration=_iteration,
@@ -153,6 +194,13 @@ class Agent:
                     provider_span.set_attribute(
                         "tool_calls_count", len(response.tool_calls)
                     )
+                _log.debug(
+                    "provider call done: iter=%d duration_ms=%.0f usage=%s tool_calls=%d",
+                    _iteration,
+                    (time.perf_counter() - t_provider) * 1000,
+                    dict(response.usage),
+                    len(response.tool_calls),
+                )
 
                 if not response.tool_calls:
                     break
@@ -183,6 +231,8 @@ class Agent:
                         args = {}
 
                     tool_obj = tools_by_name.get(tool_name)
+                    _log.debug("tool invoke: name=%r known=%s", tool_name, tool_obj is not None)
+                    t_tool = time.perf_counter()
                     with self.tracer.start_span(
                         "personakit.tool.invoke",
                         tool=tool_name,
@@ -193,15 +243,30 @@ class Agent:
                                 {"error": f"Unknown tool requested by LLM: {tool_name!r}"}
                             )
                             tool_span.set_attribute("error", "unknown_tool")
+                            _log.warning(
+                                "tool invoke: unknown tool %r — LLM hallucinated",
+                                tool_name,
+                            )
                         else:
                             try:
                                 invocation = await tool_obj.invoke(**args)
                                 result_str = json.dumps(invocation, default=str)
+                                _log.debug(
+                                    "tool invoke done: name=%r duration_ms=%.0f",
+                                    tool_name,
+                                    (time.perf_counter() - t_tool) * 1000,
+                                )
                             except Exception as exc:
                                 result_str = json.dumps(
                                     {"error": f"Tool {tool_name!r} raised: {exc!r}"}
                                 )
                                 tool_span.set_attribute("error", repr(exc))
+                                _log.warning(
+                                    "tool invoke failed: name=%r exc=%r duration_ms=%.0f",
+                                    tool_name,
+                                    exc,
+                                    (time.perf_counter() - t_tool) * 1000,
+                                )
 
                     messages.append(
                         Message(role="tool", content=result_str, tool_call_id=tool_id)
@@ -242,7 +307,7 @@ class Agent:
                     "but the response produced none."
                 )
 
-        return AnalyzeResult(
+        result = AnalyzeResult(
             specialist_name=self.specialist.name,
             summary=parsed.get("summary", "") or "",
             probes_answered=probes_answered,
@@ -255,6 +320,17 @@ class Agent:
             usage=accumulated_usage,
             model=getattr(response, "model", "") if response else (self.model or ""),
         )
+        _log.info(
+            "analyze done: specialist=%r duration_ms=%.0f tokens=%s "
+            "recommendations=%d red_flags=%d unanswered_probes=%d",
+            self.specialist.name,
+            (time.perf_counter() - analyze_started) * 1000,
+            accumulated_usage.get("total_tokens", "?"),
+            len(recommendations),
+            len(merged),
+            len(probes_unanswered),
+        )
+        return result
 
     def analyze_sync(
         self,

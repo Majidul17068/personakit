@@ -7,6 +7,55 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0a1] — 2026-06-11
+
+First alpha of the v0.3 *audit-grade moat* cycle. Phase 1 of 5: **built-in
+logging**. Previous versions emitted zero output by default — users had to
+install `personakit[otel]` and configure exporters to get any visibility. This
+release adds a standard Python `logging` integration that's silent by default
+but trivially opt-in.
+
+### Added
+
+- **`personakit._logging` module** — central logger setup using the standard
+  Python `logging` module. A `NullHandler` is attached to the
+  `personakit` logger at import time so library users never see "no handler"
+  warnings.
+- **`enable_verbose_logging(level="INFO", *, stream=None, fmt=None)`** — public
+  helper that attaches a `StreamHandler` to the personakit logger.
+  Idempotent (safe to call twice) and accepts either an `int` or
+  case-insensitive `str` level. Defaults to `sys.stderr`.
+- **`get_logger(name)`** — public helper returning the personakit logger,
+  optionally namespaced (`get_logger("agent")` → `personakit.agent`).
+- **`Agent(..., verbose: bool = False)`** — convenience flag. `verbose=True`
+  calls `enable_verbose_logging("INFO")` automatically.
+- **Lifecycle log events** in `Agent.analyze()`:
+  - `INFO`  — Agent constructed, analyze started, analyze done (with duration,
+                token count, recommendation count, red-flag count).
+  - `INFO`  — pre-match red flag hits (with the matched triggers).
+  - `DEBUG` — every provider call (iteration, provider name, model, message
+                count, duration, usage, tool_calls_count).
+  - `DEBUG` — every tool invocation (name, known flag, duration).
+  - `WARNING` — unknown tool requested by LLM, or tool raised an exception.
+- **`pythonpath = ["src"]`** added to `[tool.pytest.ini_options]` so tests run
+  reliably even when macOS occasionally re-flags the editable `.pth` file as
+  hidden.
+
+### Tests
+
+- `tests/test_logging.py` — 9 new tests covering: NullHandler attached by
+  default, `get_logger` namespacing, `enable_verbose_logging` writes to the
+  provided stream, idempotency, int/string level acceptance, invalid level
+  rejection, `Agent.__init__` emits an INFO log, `verbose=True` attaches a
+  handler, and `analyze()` emits the started / provider call / done lifecycle
+  logs.
+
+### Numbers
+
+- 102 tests passing (was 93)
+- `mypy --strict` clean across **30** source files (was 29)
+- `ruff` clean
+
 ## [0.2.1] — 2026-04-27
 
 ### Changed

@@ -4,8 +4,9 @@ Living document. Updated when we ship, change direction, or learn something.
 Version targets are intent, not commitments. Priorities shift based on user
 feedback and real-world use.
 
-**Current:** `v0.2.1` — live on PyPI. 93 tests passing, `mypy --strict` clean
-across 29 source files, ruff clean, 7 optional extras.
+**Current:** `v0.3.0a1` — live on PyPI. 102 tests passing, `mypy --strict`
+clean across 30 source files, ruff clean, 7 optional extras.
+Phase 1 of the v0.3 audit-grade moat (built-in logging) shipped.
 
 ---
 
@@ -43,6 +44,12 @@ at declaratively describing specialist expertise?** If not, it doesn't belong.
 |---|---|
 | `v0.2.0` (2026-04-27) | Streaming + OpenTelemetry + token cost tracking + conversational sessions |
 | `v0.2.1` | README synced fully to v0.2 (no code changes) |
+
+### v0.3.0 alphas — Audit-grade moat (in progress)
+
+| Release | Headline |
+|---|---|
+| `v0.3.0a1` (2026-06-11) | **Phase 1: built-in logging** — `personakit` logger with `NullHandler`, `enable_verbose_logging()`, `Agent(verbose=True)`, lifecycle logs at INFO + DEBUG, 9 new tests |
 
 What v0.2 closed (the four "table-stakes" gaps that kept personakit behind
 LangChain / CrewAI on basics):

@@ -14,6 +14,7 @@ Licensed under MIT.
 from __future__ import annotations
 
 from . import loaders as _loaders  # noqa: F401  — attaches classmethods to Specialist
+from ._logging import enable_verbose_logging, get_logger
 from .agent import Agent
 from .errors import (
     CitationMissingError,
@@ -41,7 +42,7 @@ from .specialist import (
     Theme,
 )
 
-__version__ = "0.2.1"
+__version__ = "0.3.0a1"
 __author__ = "Majidul Islam"
 __email__ = "contact.majidul.islam@gmail.com"
 __license__ = "MIT"
@@ -72,6 +73,9 @@ __all__ = [  # noqa: RUF022 - grouped logically, not alphabetically
     "Tracer",
     "NullTracer",
     "OpenTelemetryTracer",
+    # Logging
+    "enable_verbose_logging",
+    "get_logger",
     # Errors
     "PersonakitError",
     "SpecialistValidationError",
