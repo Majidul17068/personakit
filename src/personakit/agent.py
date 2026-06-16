@@ -309,6 +309,7 @@ class Agent:
 
         result = AnalyzeResult(
             specialist_name=self.specialist.name,
+            specialist_checksum=self.specialist.checksum(),
             summary=parsed.get("summary", "") or "",
             probes_answered=probes_answered,
             probes_unanswered=probes_unanswered,

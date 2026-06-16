@@ -76,6 +76,15 @@ class AnalyzeResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     specialist_name: str
+    specialist_checksum: str = Field(
+        default="",
+        description=(
+            "SHA-256 hash of the Specialist that produced this result. "
+            "Empty string for backward compatibility with manually constructed "
+            "results, but Agent.analyze always populates it. Use this to pin "
+            "outputs to a specific spec version for audit replay."
+        ),
+    )
     summary: str = ""
     probes_answered: dict[str, Any] = Field(default_factory=dict)
     probes_unanswered: list[Probe] = Field(default_factory=list)

@@ -12,13 +12,18 @@ orchestration code.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from enum import Enum
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .errors import SpecialistValidationError
+
+if TYPE_CHECKING:
+    from .diff import SpecialistDiff
 
 
 class Severity(str, Enum):
@@ -313,6 +318,43 @@ class Specialist(BaseModel):
     @property
     def effective_display_name(self) -> str:
         return self.display_name or self.name.replace("_", " ").title()
+
+    def checksum(self) -> str:
+        """Stable SHA-256 hash of the declarative content of this Specialist.
+
+        Two Specialists with identical declarative content produce identical
+        checksums regardless of construction order or pydantic internals. Use
+        this to:
+
+        * Track which spec version produced a given ``AnalyzeResult``
+          (see ``AnalyzeResult.specialist_checksum``).
+        * Detect drift between two YAML files (``Specialist.diff``).
+        * Build replay artefacts that pin the exact spec used.
+
+        Implementation: ``model_dump(mode="json")`` for deterministic
+        Python-to-JSON conversion, then ``json.dumps`` with sorted keys and
+        no whitespace, hashed with SHA-256. Every declarative field is part
+        of the hash including ``metadata`` — if you put a timestamp in
+        ``metadata`` the checksum will change every run; that's the caller's
+        responsibility.
+        """
+        payload = self.model_dump(mode="json")
+        canonical = json.dumps(
+            payload, sort_keys=True, default=str, separators=(",", ":")
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def diff(self, other: Specialist) -> SpecialistDiff:
+        """Compare this Specialist to another; return a structured diff.
+
+        See ``personakit.diff.SpecialistDiff`` for the result schema. Use
+        ``result.to_markdown()`` for a human-readable summary or
+        ``result.same`` for the boolean yes/no.
+        """
+        # Deferred import — diff.py imports from specialist.py.
+        from .diff import diff_specialists
+
+        return diff_specialists(self, other)
 
     def extend(self, **overrides: Any) -> Specialist:
         """Return a new Specialist with the given fields overridden.

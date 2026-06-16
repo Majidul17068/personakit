@@ -16,6 +16,7 @@ from __future__ import annotations
 from . import loaders as _loaders  # noqa: F401  — attaches classmethods to Specialist
 from ._logging import enable_verbose_logging, get_logger
 from .agent import Agent
+from .diff import CollectionItemChange, FieldDiff, SpecialistDiff, diff_specialists
 from .errors import (
     CitationMissingError,
     MissingDependencyError,
@@ -76,6 +77,11 @@ __all__ = [  # noqa: RUF022 - grouped logically, not alphabetically
     # Logging
     "enable_verbose_logging",
     "get_logger",
+    # Versioning / diff
+    "SpecialistDiff",
+    "FieldDiff",
+    "CollectionItemChange",
+    "diff_specialists",
     # Errors
     "PersonakitError",
     "SpecialistValidationError",
