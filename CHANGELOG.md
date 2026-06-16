@@ -7,6 +7,51 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0a2] — 2026-06-11
+
+Phase 2 of the v0.3 *audit-grade moat* cycle: **versioned specialists**.
+Every `AnalyzeResult` is now traceable to the exact Specialist definition
+that produced it, and you can diff two YAML specs from the command line.
+
+### Added
+
+- **`Specialist.checksum() -> str`** — stable SHA-256 over the declarative
+  content of a Specialist. Identical specs produce identical checksums; any
+  field change produces a different checksum.
+- **`Specialist.diff(other) -> SpecialistDiff`** — structured diff between
+  two Specialists. Items in `frameworks`, `probes`, `red_flags`, and
+  `themes` are aligned by identity field so reorders aren't reported as
+  add/remove cycles. The result has `.to_markdown()` for human-readable
+  output and `.model_dump_json()` for machine-readable consumption.
+- **`diff_specialists(a, b)`** — same as `Specialist.diff`, callable as a
+  free function.
+- **`SpecialistDiff`, `FieldDiff`, `CollectionItemChange`** — frozen
+  pydantic models exposed as public API.
+- **`AnalyzeResult.specialist_checksum`** — new field, populated
+  automatically by `Agent.analyze()` from the source Specialist. Defaults
+  to `""` for backward compat when results are constructed manually.
+- **`personakit diff <a.yaml> <b.yaml>`** — new CLI command. Exit code
+  `0` if the specs match, `1` if they differ, `2` on invocation error.
+  `--json` for machine-readable output, `--quiet` to suppress stdout and
+  rely on the exit code. Console script registered via `[project.scripts]`.
+- **`python -m personakit`** — alternative invocation via a new
+  `__main__.py` shim.
+
+### Tests
+
+- `tests/test_versioning.py` — 14 tests covering checksum stability,
+  every structural change case, markdown rendering, and AnalyzeResult
+  population.
+- `tests/test_cli.py` — 7 tests covering the `personakit diff` CLI
+  exit codes, JSON output, quiet mode, missing-file handling, and the
+  no-command help fallback.
+
+### Numbers
+
+- 123 tests passing (was 102)
+- `mypy --strict` clean across 33 source files (was 30)
+- `ruff` clean
+
 ## [0.3.0a1] — 2026-06-11
 
 First alpha of the v0.3 *audit-grade moat* cycle. Phase 1 of 5: **built-in

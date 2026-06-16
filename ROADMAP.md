@@ -4,9 +4,10 @@ Living document. Updated when we ship, change direction, or learn something.
 Version targets are intent, not commitments. Priorities shift based on user
 feedback and real-world use.
 
-**Current:** `v0.3.0a1` — live on PyPI. 102 tests passing, `mypy --strict`
-clean across 30 source files, ruff clean, 7 optional extras.
-Phase 1 of the v0.3 audit-grade moat (built-in logging) shipped.
+**Current:** `v0.3.0a2` — live on PyPI. 123 tests passing, `mypy --strict`
+clean across 33 source files, ruff clean, 7 optional extras.
+Phases 1–2 of the v0.3 audit-grade moat (built-in logging,
+versioned specialists + diff CLI) shipped.
 
 ---
 
@@ -50,6 +51,7 @@ at declaratively describing specialist expertise?** If not, it doesn't belong.
 | Release | Headline |
 |---|---|
 | `v0.3.0a1` (2026-06-11) | **Phase 1: built-in logging** — `personakit` logger with `NullHandler`, `enable_verbose_logging()`, `Agent(verbose=True)`, lifecycle logs at INFO + DEBUG, 9 new tests |
+| `v0.3.0a2` (2026-06-11) | **Phase 2: versioned specialists** — `Specialist.checksum()`, `Specialist.diff()`, `AnalyzeResult.specialist_checksum`, `personakit diff <a> <b>` CLI, 21 new tests |
 
 What v0.2 closed (the four "table-stakes" gaps that kept personakit behind
 LangChain / CrewAI on basics):
