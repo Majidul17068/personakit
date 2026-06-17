@@ -107,3 +107,61 @@ def test_cli_no_command_prints_help() -> None:
     proc = _run_cli()
     assert proc.returncode == 2
     assert "usage" in proc.stdout.lower() or "usage" in proc.stderr.lower()
+
+
+# -- `personakit show` -------------------------------------------------------
+
+
+@pytest.fixture
+def sample_spec(tmp_path: Path) -> Path:
+    spec_path = tmp_path / "sample.yaml"
+    spec_path.write_text(
+        """
+name: sample-spec
+display_name: Sample Specialist
+domain: testing.unit
+persona: A sample specialist used for CLI show-command tests.
+probes:
+  - question: First probe?
+    key: p1
+  - question: Second probe?
+    key: p2
+red_flags:
+  - trigger: danger
+    severity: high
+    action: escalate
+themes:
+  - name: triage
+    description: Initial assessment
+""".strip()
+    )
+    return spec_path
+
+
+def test_cli_show_prints_summary(sample_spec: Path) -> None:
+    proc = _run_cli("show", str(sample_spec))
+    assert proc.returncode == 0, proc.stderr
+    out = proc.stdout
+    assert "Sample Specialist" in out
+    assert "sample-spec" in out
+    assert "testing.unit" in out
+    assert "probes" in out
+    assert "red_flags" in out
+
+
+def test_cli_show_json(sample_spec: Path) -> None:
+    proc = _run_cli("show", str(sample_spec), "--json")
+    assert proc.returncode == 0, proc.stderr
+    payload = json.loads(proc.stdout)
+    assert payload["name"] == "sample-spec"
+    assert payload["domain"] == "testing.unit"
+    assert payload["counts"]["probes"] == 2
+    assert payload["counts"]["red_flags"] == 1
+    assert payload["counts"]["themes"] == 1
+    assert len(payload["checksum"]) == 64  # SHA-256 hex
+
+
+def test_cli_show_missing_file_exits_two(tmp_path: Path) -> None:
+    proc = _run_cli("show", str(tmp_path / "nope.yaml"))
+    assert proc.returncode == 2
+    assert "error" in proc.stderr.lower()
