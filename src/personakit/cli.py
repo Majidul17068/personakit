@@ -23,6 +23,7 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from . import __version__
 from .diff import diff_specialists
 from .errors import PersonakitError
 from .specialist import Specialist
@@ -35,6 +36,24 @@ def _build_parser() -> argparse.ArgumentParser:
             "personakit — declarative LLM specialist agents. "
             "See https://pypi.org/project/personakit/ for full docs."
         ),
+        epilog=textwrap.dedent(
+            """\
+            Examples:
+              personakit show specs/clinical_triage.yaml
+              personakit show specs/clinical_triage.yaml --json | jq .checksum
+              personakit diff specs/v1.yaml specs/v2.yaml
+              personakit diff specs/v1.yaml specs/v2.yaml --json
+              personakit diff specs/v1.yaml specs/v2.yaml --quiet  # exit code only
+            """
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"personakit {__version__}",
+        help="Print the personakit package version and exit.",
     )
     subparsers = parser.add_subparsers(dest="command")
 

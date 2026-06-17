@@ -165,3 +165,32 @@ def test_cli_show_missing_file_exits_two(tmp_path: Path) -> None:
     proc = _run_cli("show", str(tmp_path / "nope.yaml"))
     assert proc.returncode == 2
     assert "error" in proc.stderr.lower()
+
+
+# -- `personakit --version` -------------------------------------------------
+
+
+def test_cli_version_long_flag() -> None:
+    from personakit import __version__
+
+    proc = _run_cli("--version")
+    assert proc.returncode == 0, proc.stderr
+    # argparse writes version output to stdout
+    assert __version__ in proc.stdout
+    assert "personakit" in proc.stdout.lower()
+
+
+def test_cli_version_short_flag() -> None:
+    from personakit import __version__
+
+    proc = _run_cli("-V")
+    assert proc.returncode == 0, proc.stderr
+    assert __version__ in proc.stdout
+
+
+def test_cli_help_lists_examples() -> None:
+    proc = _run_cli("--help")
+    assert proc.returncode == 0
+    assert "Examples:" in proc.stdout
+    assert "personakit show" in proc.stdout
+    assert "personakit diff" in proc.stdout
