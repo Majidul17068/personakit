@@ -72,7 +72,8 @@ litellm = ["litellm>=1.40"]
 yaml = ["pyyaml>=6.0"]
 web = ["beautifulsoup4>=4.12", "trafilatura>=1.6"]
 otel = ["opentelemetry-api>=1.20", "opentelemetry-sdk>=1.20"]
-all = ["personakit[openai,anthropic,litellm,yaml,web,otel]"]
+graphrag = ["neo4j>=5.20"]
+all = ["personakit[openai,anthropic,litellm,yaml,web,otel,graphrag]"]
 dev = [
     "pytest>=7.4",
     "pytest-asyncio>=0.23",
