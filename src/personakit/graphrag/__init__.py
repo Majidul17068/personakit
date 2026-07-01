@@ -12,9 +12,17 @@ vector + graph retrieval (Phase 3), and ingestion helpers (Phase 4).
 from __future__ import annotations
 
 from .store import GraphStore, Neo4jGraphStore, QueryResult
+from .tool import (
+    DEFAULT_TOOL_DESCRIPTION,
+    DEFAULT_TOOL_NAME,
+    build_graph_query_tool,
+)
 
 __all__ = [
     "GraphStore",
     "Neo4jGraphStore",
     "QueryResult",
+    "build_graph_query_tool",
+    "DEFAULT_TOOL_NAME",
+    "DEFAULT_TOOL_DESCRIPTION",
 ]
