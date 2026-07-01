@@ -7,6 +7,40 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1a1] — 2026-07-01
+
+Live observability — you can now *watch* an ``Agent.analyze`` call happen in
+the terminal, with per-provider-call latency, tokens, and cost estimates.
+
+### Added
+
+- **`ConsoleTracer`** (`personakit.observability`) — zero-dependency ``Tracer``
+  implementation that renders each of the three built-in spans
+  (`personakit.analyze`, `personakit.provider.complete`, `personakit.tool.invoke`)
+  as coloured one-line status output. TTY-autodetected colour, ``live=True``
+  mode prints on span open + close so long LLM calls announce themselves
+  immediately. ``show_cost`` / ``show_tokens`` toggles for compact runs.
+- **`SessionMetrics`** and **`CallRecord`** (`personakit.metrics`) —
+  cumulative session ledger. Every ``Agent.analyze`` invocation is recorded;
+  aggregate via `total_calls`, `total_tokens`, `total_cost_usd`,
+  `total_duration_ms`, `by_specialist()`, `by_model()`, and a printable
+  `.summary()` table.
+- **`Agent.metrics`** — every ``Agent`` now exposes a `SessionMetrics`
+  ledger. Populated automatically at the end of each ``analyze()`` call.
+- **`Agent(verbose=True)` now auto-attaches `ConsoleTracer`** — if no explicit
+  ``tracer=`` is supplied, verbose mode gets you full trace output on the
+  terminal for free.
+
+### Tests
+
+- `tests/test_console_tracer.py` — 8 tests covering protocol conformance,
+  analyze/provider/tool span rendering, live vs. non-live mode, nested
+  indentation, exception capture, and TTY colour autodetection.
+- `tests/test_session_metrics.py` — 9 tests covering recording, aggregation
+  properties, missing usage, Anthropic-shape usage, per-specialist and
+  per-model grouping, reset, summary content, and `Agent.metrics`
+  initialisation.
+
 ## [0.4.0a2] — 2026-07-01
 
 ### Fixed

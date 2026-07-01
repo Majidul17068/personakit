@@ -27,7 +27,8 @@ from .errors import (
     SpecialistValidationError,
     ToolError,
 )
-from .observability import NullTracer, OpenTelemetryTracer, Tracer
+from .metrics import CallRecord, SessionMetrics
+from .observability import ConsoleTracer, NullTracer, OpenTelemetryTracer, Tracer
 from .prompt_builder import PromptBuilder
 from .registry import SpecialistRegistry
 from .result import AnalyzeResult, Recommendation, StreamEvent, TriggeredRedFlag
@@ -43,7 +44,7 @@ from .specialist import (
     Theme,
 )
 
-__version__ = "0.4.0a2"
+__version__ = "0.4.1a1"
 __author__ = "Majidul Islam"
 __email__ = "contact.majidul.islam@gmail.com"
 __license__ = "MIT"
@@ -74,6 +75,10 @@ __all__ = [  # noqa: RUF022 - grouped logically, not alphabetically
     "Tracer",
     "NullTracer",
     "OpenTelemetryTracer",
+    "ConsoleTracer",
+    # Metrics
+    "SessionMetrics",
+    "CallRecord",
     # Logging
     "enable_verbose_logging",
     "get_logger",
