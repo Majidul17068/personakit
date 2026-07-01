@@ -7,6 +7,13 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0a2] — 2026-07-01
+
+### Fixed
+
+- **`personakit.__version__`** — hotfix so the runtime version constant
+  matches the wheel metadata (was `0.3.0a4`, now `0.4.0a2`).
+
 ## [0.4.0a1] — 2026-07-01
 
 Phase 1 of the v0.4 *GraphRAG* cycle: **universal graph retrieval**.
