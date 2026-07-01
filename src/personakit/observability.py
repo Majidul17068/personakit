@@ -33,12 +33,32 @@ Custom tracer example:
 
 from __future__ import annotations
 
+import sys
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Any, Protocol, runtime_checkable
+from typing import IO, Any, Protocol, runtime_checkable
 
+from .cost import estimate_cost_from_usage
 from .errors import MissingDependencyError
+
+_ANSI_RESET = "\x1b[0m"
+_ANSI = {
+    "cyan": "\x1b[36m",
+    "yellow": "\x1b[33m",
+    "magenta": "\x1b[35m",
+    "red": "\x1b[31m",
+    "green": "\x1b[32m",
+    "grey": "\x1b[90m",
+    "bold": "\x1b[1m",
+}
+
+
+def _color(text: str, name: str, enabled: bool) -> str:
+    if not enabled or name not in _ANSI:
+        return text
+    return f"{_ANSI[name]}{text}{_ANSI_RESET}"
 
 
 @runtime_checkable
@@ -146,7 +166,219 @@ class OpenTelemetryTracer:
             yield span
 
 
+class _ConsoleSpan:
+    """Live span used by ``ConsoleTracer`` — records attributes and prints on close."""
+
+    def __init__(
+        self,
+        tracer: ConsoleTracer,
+        name: str,
+        attributes: dict[str, Any],
+    ) -> None:
+        self._tracer = tracer
+        self._name = name
+        self._attributes = dict(attributes)
+        self._extras: dict[str, Any] = {}
+        self._started = time.perf_counter()
+        self._depth = tracer._depth
+        self._error: str | None = None
+
+    def add_event(self, name: str, **attributes: Any) -> None:
+        del name, attributes
+
+    def set_attribute(self, key: str, value: Any) -> None:
+        self._extras[key] = value
+
+    def __enter__(self) -> _ConsoleSpan:
+        if self._tracer._live:
+            self._tracer._render_open(self)
+        self._tracer._depth += 1
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self._tracer._depth = max(0, self._tracer._depth - 1)
+        duration_ms = (time.perf_counter() - self._started) * 1000
+        if exc_val is not None:
+            self._error = f"{type(exc_val).__name__}: {exc_val}"
+        self._tracer._render_close(self, duration_ms)
+
+
+class ConsoleTracer:
+    """Zero-dependency ``Tracer`` that renders each span as a coloured line.
+
+    Wire it into any ``Agent`` (or accept the default when passing
+    ``verbose=True``) to see the three built-in personakit spans surface as
+    they happen:
+
+    * ``personakit.analyze`` — top-level analyze call
+    * ``personakit.provider.complete`` — every LLM round-trip
+    * ``personakit.tool.invoke`` — every tool execution
+
+    Parameters
+    ----------
+    stream
+        Output stream. Defaults to ``sys.stdout``.
+    color
+        Force colour on / off. ``None`` (default) auto-detects from
+        ``stream.isatty()``.
+    show_cost
+        When true (default), estimates USD cost per provider call using
+        ``personakit.cost.estimate_cost_from_usage`` and shows it inline.
+    show_tokens
+        When true (default), shows ``prompt→completion`` token counts.
+
+    Example
+    -------
+
+        from personakit import Agent
+        from personakit.observability import ConsoleTracer
+
+        agent = Agent(specialist=spec, model="gpt-4o", tracer=ConsoleTracer())
+        await agent.analyze("...")
+        # → [analyze] specialist=code_reviewer model=gpt-4o 1420ms
+        #     → provider openai iter=0 msgs=2 542→318 tok $0.00485
+    """
+
+    def __init__(
+        self,
+        *,
+        stream: IO[str] | None = None,
+        color: bool | None = None,
+        show_cost: bool = True,
+        show_tokens: bool = True,
+        live: bool = True,
+    ) -> None:
+        self._stream: IO[str] = stream or sys.stdout
+        if color is None:
+            color = bool(getattr(self._stream, "isatty", lambda: False)())
+        self._color = color
+        self._show_cost = show_cost
+        self._show_tokens = show_tokens
+        self._live = live
+        self._depth = 0
+
+    @contextmanager
+    def start_span(self, name: str, **attributes: Any) -> Iterator[_ConsoleSpan]:
+        span = _ConsoleSpan(self, name, attributes)
+        with span:
+            yield span
+
+    def _render_open(self, span: _ConsoleSpan) -> None:
+        indent = "  " * span._depth
+        line = self._format_open(span._name, span._attributes)
+        print(f"{indent}{line}", file=self._stream, flush=True)
+
+    def _render_close(self, span: _ConsoleSpan, duration_ms: float) -> None:
+        indent = "  " * span._depth
+        merged: dict[str, Any] = {**span._attributes, **span._extras}
+        line = self._format_close(span._name, merged, duration_ms, span._error)
+        print(f"{indent}{line}", file=self._stream, flush=True)
+
+    def _format_open(self, name: str, attrs: dict[str, Any]) -> str:
+        arrow = _color("▶", "grey", self._color)
+        if name == "personakit.analyze":
+            label = _color("[analyze]", "cyan", self._color)
+            return (
+                f"{arrow} {label} specialist={attrs.get('specialist','?')} "
+                f"model={attrs.get('model') or '(default)'}"
+            )
+        if name == "personakit.provider.complete":
+            label = _color("provider", "yellow", self._color)
+            return (
+                f"{arrow} {label} {attrs.get('provider','?')} "
+                f"iter={attrs.get('iteration', 0)}"
+            )
+        if name == "personakit.tool.invoke":
+            label = _color("tool", "magenta", self._color)
+            return f"{arrow} {label} {attrs.get('tool','?')}"
+        return f"{arrow} [{name}]"
+
+    def _format_close(
+        self,
+        name: str,
+        attrs: dict[str, Any],
+        duration_ms: float,
+        error: str | None,
+    ) -> str:
+        arrow = _color("◀", "grey", self._color)
+        if name == "personakit.analyze":
+            label = _color("[analyze]", "cyan", self._color)
+            tail = _color(f"{duration_ms:.0f}ms", "grey", self._color)
+            body = f"{arrow} {label} done  {tail}"
+            if error:
+                body += "  " + _color(f"ERROR {error}", "red", self._color)
+            return body
+
+        if name == "personakit.provider.complete":
+            label = _color("provider", "yellow", self._color)
+            provider = attrs.get("provider", "?")
+            iteration = attrs.get("iteration", 0)
+            msg_count = attrs.get("message_count", 0)
+            in_tok = int(
+                attrs.get("usage.input_tokens")
+                or attrs.get("usage.prompt_tokens")
+                or 0
+            )
+            out_tok = int(
+                attrs.get("usage.output_tokens")
+                or attrs.get("usage.completion_tokens")
+                or 0
+            )
+            parts = [arrow, label, provider, f"iter={iteration}", f"msgs={msg_count}"]
+            if self._show_tokens and (in_tok or out_tok):
+                parts.append(f"{in_tok}→{out_tok} tok")
+            if self._show_cost:
+                model = attrs.get("model") or attrs.get("_model") or ""
+                if model and (in_tok or out_tok):
+                    cost = estimate_cost_from_usage(
+                        model,
+                        {"prompt_tokens": in_tok, "completion_tokens": out_tok},
+                    )
+                    if cost is not None:
+                        parts.append(f"${cost:.5f}")
+            parts.append(_color(f"{duration_ms:.0f}ms", "grey", self._color))
+            tool_calls = int(attrs.get("tool_calls_count") or 0)
+            if tool_calls:
+                parts.append(
+                    _color(f"tool_calls={tool_calls}", "magenta", self._color)
+                )
+            if error:
+                parts.append(_color(f"ERROR {error}", "red", self._color))
+            return "  ".join(parts)
+
+        if name == "personakit.tool.invoke":
+            label = _color("tool", "magenta", self._color)
+            tool = attrs.get("tool", "?")
+            known = attrs.get("known", True)
+            status = "ok" if known and not error and not attrs.get("error") else "err"
+            colour = "green" if status == "ok" else "red"
+            parts = [
+                arrow,
+                label,
+                tool,
+                _color(status, colour, self._color),
+                _color(f"{duration_ms:.0f}ms", "grey", self._color),
+            ]
+            if error:
+                parts.append(_color(error, "red", self._color))
+            return "  ".join(parts)
+
+        parts = [arrow, _color(f"[{name}]", "grey", self._color)]
+        if attrs:
+            parts.append(" ".join(f"{k}={v}" for k, v in attrs.items()))
+        parts.append(_color(f"{duration_ms:.0f}ms", "grey", self._color))
+        if error:
+            parts.append(_color(error, "red", self._color))
+        return "  ".join(parts)
+
+
 __all__ = [
+    "ConsoleTracer",
     "NullTracer",
     "OpenTelemetryTracer",
     "TraceSpan",
