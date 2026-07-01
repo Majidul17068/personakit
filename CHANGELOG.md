@@ -7,6 +7,43 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0a1] — 2026-07-01
+
+Phase 1 of the v0.4 *GraphRAG* cycle: **universal graph retrieval**.
+personakit specialists can now query knowledge graphs through a single,
+backend-agnostic interface — no more per-project driver code.
+
+### Added
+
+- **`personakit.graphrag`** — new optional subpackage. Install with
+  `pip install personakit[graphrag]` to pull in the Neo4j driver.
+- **`GraphStore` protocol** — `typing.Protocol` (`@runtime_checkable`)
+  defining `.query(cypher, **parameters) -> QueryResult` and `.close()`.
+  Any Cypher-capable backend (Neo4j, Memgraph, AuraDB, Neptune with
+  openCypher) can plug in by satisfying it.
+- **`Neo4jGraphStore`** — reference implementation. Holds a single
+  persistent driver, serialises `Node` / `Relationship` / `Path` results
+  into JSON-safe dicts, never raises on Cypher errors (returns
+  `QueryResult(status="error", ...)` instead).
+- **`QueryResult`** — frozen value object with `status`, `records`,
+  `duration_ms`, `error`, `ok` property, and `__len__`.
+- **`build_graph_query_tool(store, *, name, description, max_records)`** —
+  factory that wraps a `GraphStore` as a `personakit.Tool`. The LLM sees
+  a single `cypher` argument; oversized result sets are truncated with a
+  `truncated=True` marker so the model's context window stays safe.
+- **`graphrag` optional extra** — `pip install personakit[graphrag]` pulls
+  in `neo4j>=5.20`. Also included in the `all` bundle.
+
+### Tests
+
+- `tests/test_graphrag_store.py` — `QueryResult` defaults, protocol
+  conformance via an in-memory fake, and the "neo4j not installed" error
+  path.
+- `tests/test_graphrag_tool.py` — success payload shape, error
+  propagation, record truncation, disabled cap, OpenAI schema generation,
+  custom name / description, and the `TypeError` when the input is not a
+  `GraphStore`.
+
 ## [0.3.0a2] — 2026-06-11
 
 Phase 2 of the v0.3 *audit-grade moat* cycle: **versioned specialists**.
