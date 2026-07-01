@@ -24,7 +24,8 @@ from typing import Any, cast
 from ._logging import enable_verbose_logging, get_logger
 from .errors import CitationMissingError, OutputParseError
 from .matching import merge_post, pre_match
-from .observability import NullTracer, Tracer
+from .metrics import SessionMetrics
+from .observability import ConsoleTracer, NullTracer, Tracer
 from .prompt_builder import PromptBuilder
 from .providers.base import LLMProvider, Message
 from .result import AnalyzeResult, Recommendation, StreamEvent
@@ -52,6 +53,8 @@ class Agent:
     ) -> None:
         if verbose:
             enable_verbose_logging("INFO")
+            if tracer is None:
+                tracer = ConsoleTracer()
         if provider is None:
             if model is None:
                 raise ValueError("Agent requires either `provider` or `model`.")
@@ -67,6 +70,7 @@ class Agent:
         self.tools = list(tools) if tools else []
         self.max_tool_iterations = max_tool_iterations
         self.tracer: Tracer = tracer or NullTracer()
+        self.metrics: SessionMetrics = SessionMetrics()
         _log.info(
             "Agent ready: specialist=%r provider=%s model=%s tools=%d strict=%s",
             specialist.name,
@@ -90,6 +94,23 @@ class Agent:
             tracer=self.tracer,
             # verbose is a one-shot init effect (configures the root logger),
             # so it's NOT propagated — re-enabling on every clone would be noisy.
+        )
+
+    def _record_metrics(
+        self,
+        *,
+        duration_ms: float,
+        usage: dict[str, Any] | None,
+        tool_calls: int,
+        error: str | None = None,
+    ) -> None:
+        self.metrics.record(
+            specialist=self.specialist.name,
+            model=self.model or getattr(self.provider, "default_model", "") or "",
+            duration_ms=duration_ms,
+            usage=usage,
+            tool_calls=tool_calls,
+            error=error,
         )
 
     async def analyze(
@@ -321,15 +342,23 @@ class Agent:
             usage=accumulated_usage,
             model=getattr(response, "model", "") if response else (self.model or ""),
         )
+        analyze_duration_ms = (time.perf_counter() - analyze_started) * 1000
         _log.info(
             "analyze done: specialist=%r duration_ms=%.0f tokens=%s "
             "recommendations=%d red_flags=%d unanswered_probes=%d",
             self.specialist.name,
-            (time.perf_counter() - analyze_started) * 1000,
+            analyze_duration_ms,
             accumulated_usage.get("total_tokens", "?"),
             len(recommendations),
             len(merged),
             len(probes_unanswered),
+        )
+        self._record_metrics(
+            duration_ms=analyze_duration_ms,
+            usage=accumulated_usage,
+            tool_calls=sum(
+                1 for m in messages if getattr(m, "role", "") == "tool"
+            ),
         )
         return result
 
