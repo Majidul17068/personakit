@@ -7,6 +7,19 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1a3] — 2026-07-01
+
+### Fixed
+
+- **`Agent.chat()` now returns plain prose, not JSON.** Previously
+  `chat()` reused ``build_system_prompt`` — which appends
+  ``Respond with a single JSON object matching the provided schema`` —
+  causing conversational replies to arrive wrapped in ``{"summary": "..."}``.
+  A new ``PromptBuilder.build_chat_system_prompt`` renders a persona-only
+  prompt (role / tone / style / goals / constraints) with an explicit
+  ``Respond in plain natural language, in character. Do not emit JSON.``
+  directive. ``chat()`` uses it.
+
 ## [0.4.1a2] — 2026-07-01
 
 ### Added

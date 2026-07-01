@@ -154,6 +154,46 @@ class PromptBuilder:
 
         return "\n".join(parts)
 
+    def build_chat_system_prompt(
+        self,
+        specialist: Specialist,
+    ) -> str:
+        """Build a plain-text system prompt for ``Agent.chat()``.
+
+        Unlike ``build_system_prompt``, this omits every section that instructs
+        the model to emit structured JSON — no probes block, no red-flags
+        block, no themes, no ``<output_format>`` directive. The result is a
+        clean persona-only prompt suitable for free-form conversation.
+
+        Preserves the persona, tone, style, goals, and constraints so the
+        specialist still "feels" like itself.
+        """
+        parts: list[str] = []
+        parts.append("<role>")
+        parts.append(
+            f"You are {specialist.effective_display_name}. {specialist.persona}".strip()
+        )
+        if specialist.tone:
+            parts.append(f"Tone: {specialist.tone}.")
+        if specialist.style:
+            parts.append(f"Style: {specialist.style}.")
+        parts.append("</role>")
+
+        if specialist.goals:
+            parts.append("<goals>")
+            parts.extend(f"- {g}" for g in specialist.goals)
+            parts.append("</goals>")
+
+        if specialist.constraints:
+            parts.append("<constraints>")
+            parts.extend(f"- {c}" for c in specialist.constraints)
+            parts.append("</constraints>")
+
+        parts.append(
+            "Respond in plain natural language, in character. Do not emit JSON."
+        )
+        return "\n".join(parts)
+
     def build_output_schema(
         self,
         specialist: Specialist,

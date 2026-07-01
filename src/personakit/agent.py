@@ -601,7 +601,7 @@ class Agent:
         spans and appends one entry to ``self.metrics`` so conversational use
         is observable identically to ``analyze()``.
         """
-        system_prompt = self.prompt_builder.build_system_prompt(self.specialist)
+        system_prompt = self.prompt_builder.build_chat_system_prompt(self.specialist)
         messages: list[Message] = [Message(role="system", content=system_prompt)]
         if history:
             messages.extend(history)
