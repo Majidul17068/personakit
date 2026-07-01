@@ -595,18 +595,51 @@ class Agent:
         yield StreamEvent(type="complete", result=result)
 
     async def chat(self, message: str, *, history: list[Message] | None = None) -> str:
-        """Lightweight conversational call — no structured output."""
+        """Lightweight conversational call — no structured output.
+
+        Emits ``personakit.chat`` and ``personakit.provider.complete`` tracer
+        spans and appends one entry to ``self.metrics`` so conversational use
+        is observable identically to ``analyze()``.
+        """
         system_prompt = self.prompt_builder.build_system_prompt(self.specialist)
         messages: list[Message] = [Message(role="system", content=system_prompt)]
         if history:
             messages.extend(history)
         messages.append(Message(role="user", content=message))
-        response = await self.provider.complete(
-            messages,
-            model=self.model,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            tools=_tool_payload(self.tools) if self.tools else None,
+
+        started = time.perf_counter()
+        with self.tracer.start_span(
+            "personakit.chat",
+            specialist=self.specialist.name,
+            model=self.model or getattr(self.provider, "default_model", ""),
+            provider=self.provider.name,
+            message_count=len(messages),
+        ):
+            with self.tracer.start_span(
+                "personakit.provider.complete",
+                iteration=0,
+                provider=self.provider.name,
+                message_count=len(messages),
+            ) as provider_span:
+                response = await self.provider.complete(
+                    messages,
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    tools=_tool_payload(self.tools) if self.tools else None,
+                )
+                for key, value in response.usage.items():
+                    if isinstance(value, (int, float)):
+                        provider_span.set_attribute(f"usage.{key}", value)
+                provider_span.set_attribute("model", self.model or "")
+                provider_span.set_attribute(
+                    "tool_calls_count", len(response.tool_calls)
+                )
+
+        self._record_metrics(
+            duration_ms=(time.perf_counter() - started) * 1000,
+            usage=response.usage,
+            tool_calls=len(response.tool_calls),
         )
         return response.text
 

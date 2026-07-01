@@ -7,6 +7,16 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1a2] — 2026-07-01
+
+### Added
+
+- **`Agent.chat()` now emits tracer spans + records `SessionMetrics`.**
+  A new ``personakit.chat`` span is emitted (rendered as ``[chat]`` by
+  ``ConsoleTracer``), wrapping the underlying ``personakit.provider.complete``
+  span, and one ledger row is appended per call. Conversational use is now
+  observable identically to ``analyze()``.
+
 ## [0.4.1a1] — 2026-07-01
 
 Live observability — you can now *watch* an ``Agent.analyze`` call happen in

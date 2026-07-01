@@ -281,8 +281,9 @@ class ConsoleTracer:
 
     def _format_open(self, name: str, attrs: dict[str, Any]) -> str:
         arrow = _color("▶", "grey", self._color)
-        if name == "personakit.analyze":
-            label = _color("[analyze]", "cyan", self._color)
+        if name in ("personakit.analyze", "personakit.chat"):
+            tag = "analyze" if name == "personakit.analyze" else "chat"
+            label = _color(f"[{tag}]", "cyan", self._color)
             return (
                 f"{arrow} {label} specialist={attrs.get('specialist','?')} "
                 f"model={attrs.get('model') or '(default)'}"
@@ -306,8 +307,9 @@ class ConsoleTracer:
         error: str | None,
     ) -> str:
         arrow = _color("◀", "grey", self._color)
-        if name == "personakit.analyze":
-            label = _color("[analyze]", "cyan", self._color)
+        if name in ("personakit.analyze", "personakit.chat"):
+            tag = "analyze" if name == "personakit.analyze" else "chat"
+            label = _color(f"[{tag}]", "cyan", self._color)
             tail = _color(f"{duration_ms:.0f}ms", "grey", self._color)
             body = f"{arrow} {label} done  {tail}"
             if error:
